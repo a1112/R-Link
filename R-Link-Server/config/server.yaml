@@ -1,0 +1,14 @@
+# R-Link-Server 配置文件
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true  # 开发模式，生产环境设置为 false
+
+plugins:
+  dir: "plugins"
+  auto_start: []  # 自动启动的插件列表
+
+logging:
+  level: "INFO"
+  file: "logs/server.log"
