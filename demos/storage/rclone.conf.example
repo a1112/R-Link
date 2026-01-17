@@ -1,0 +1,37 @@
+# Rclone 配置示例
+# 将此文件复制到配置目录并修改
+
+# WebDav 示例 (坚果云)
+[webdav_jianguoyun]
+type = webdav
+url = https://dav.jianguoyun.com/dav/
+vendor = other
+user = your_email@example.com
+pass = your_app_password
+
+# Google Drive 示例
+[gdrive]
+type = drive
+scope = drive
+token = {"access_token":"xxx"}
+team_drive =
+
+# OneDrive 示例
+[onedrive]
+type = onedrive
+token = {"access_token":"xxx"}
+drive_id =
+drive_type = business
+
+# SFTP 示例
+[sftp]
+type = sftp
+host = example.com
+user = username
+pass = password
+port = 22
+
+# 本地文件夹示例
+[local]
+type = local
+nounc = true

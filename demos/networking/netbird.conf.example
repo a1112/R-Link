@@ -1,0 +1,19 @@
+{
+  "ManagementURL": "https://api.netbird.io",
+  "AdminURL": "https://api.netbird.io",
+  "Hostname": "rlink-client",
+  "PreSharedKey": "",
+  "LogFile": "",
+  "LogLevel": "info",
+
+  "SetupKeys": [
+    {
+      "Key": "your-setup-key-here",
+      "Description": "R-Link setup key"
+    }
+  ],
+
+  "Routing": {
+    "MeshEnabled": true
+  }
+}

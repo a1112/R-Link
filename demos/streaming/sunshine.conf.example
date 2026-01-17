@@ -1,0 +1,25 @@
+# Sunshine 配置示例
+# 将此文件复制到 Sunshine 配置目录并重命名为 sunshine.conf
+
+# 服务器名称
+sunshine_name = "R-Link Streaming Server"
+
+# Web UI 端口
+webui_port = 47990
+
+# 编码器选择: nvenc (NVIDIA), amdvce (AMD), qsv (Intel), software
+encoder = nvenc
+
+# 视频质量设置
+min_bitrate = 5000
+bitrate = 20000
+max_bitrate = 50000
+
+# 分辨率
+fps = [60, 30, 120]
+
+# 音频
+audio_sink = .*(Default|扬声器).*\\)$
+
+# PIN 配对
+pin = 0000

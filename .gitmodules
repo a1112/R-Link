@@ -1,0 +1,18 @@
+[submodule "submodules/sunshine"]
+	path = submodules/sunshine
+	url = https://github.com/LizardByte/Sunshine.git
+[submodule "submodules/moonlight"]
+	path = submodules/moonlight
+	url = https://github.com/moonlight-stream/moonlight-qt.git
+[submodule "submodules/netbird"]
+	path = submodules/netbird
+	url = https://github.com/netbirdio/netbird.git
+[submodule "submodules/rclone"]
+	path = submodules/rclone
+	url = https://github.com/rclone/rclone.git
+[submodule "submodules/frp"]
+	path = submodules/frp
+	url = https://github.com/fatedier/frp.git
+[submodule "submodules/rustdesk"]
+	path = submodules/rustdesk
+	url = https://github.com/rustdesk/rustdesk.git
