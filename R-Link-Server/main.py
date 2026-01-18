@@ -4,9 +4,15 @@ R-Link-Server 主入口
 插件化管理平台的后端服务
 """
 import sys
+import os
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# 添加项目根目录到 Python 路径，支持直接运行
+_current_dir = Path(__file__).parent
+if str(_current_dir) not in sys.path:
+    sys.path.insert(0, str(_current_dir))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,8 +22,14 @@ import uvicorn
 from core.plugin_manager import PluginManager
 from api.plugins import router as plugins_router, set_plugin_manager
 from api.system import router as system_router
+from api.plugin_sources import router as sources_router
 
 # 配置日志
+# 创建必要的目录
+Path("logs").mkdir(exist_ok=True)
+Path("config").mkdir(exist_ok=True)
+Path("plugins").mkdir(exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -37,16 +49,11 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     global plugin_manager
 
-    # 创建必要的目录
-    Path("logs").mkdir(exist_ok=True)
-    Path("config").mkdir(exist_ok=True)
-    Path("plugins").mkdir(exist_ok=True)
-
     # 启动时初始化
     logger.info("Starting R-Link-Server...")
 
-    # 初始化插件管理器
-    plugin_manager = PluginManager(plugins_dir="plugins")
+    # 初始化插件管理器（用户插件 + 内置插件）
+    plugin_manager = PluginManager(plugins_dir="plugins", builtin_dir="builtin")
     set_plugin_manager(plugin_manager)
 
     # 打印已加载的插件
@@ -81,6 +88,7 @@ app.add_middleware(
 # 注册路由
 app.include_router(plugins_router)
 app.include_router(system_router)
+app.include_router(sources_router)
 
 
 # 根路径

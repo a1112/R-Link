@@ -1,0 +1,22 @@
+name: nginx-plugin
+version: 1.0.0
+description: Nginx 反向代理服务，用于管理 HTTP/HTTPS 请求转发
+author: R-Link Team
+binary: nginx-plugin.exe
+category: network
+builtin: true
+config_template:
+  nginx_path: nginx.exe
+  config_dir: conf
+  port: 80
+  worker_processes: 4
+  max_connections: 1024
+  keepalive_timeout: 65
+default_config:
+  nginx_path: nginx.exe
+  config_dir: conf
+  port: 80
+  worker_processes: 4
+  max_connections: 1024
+  keepalive_timeout: 65
+dependencies: []

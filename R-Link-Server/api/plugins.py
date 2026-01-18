@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 import logging
 
-from ..core.plugin_manager import PluginManager
-from ..core.plugin_interface import PluginState
+from core.plugin_manager import PluginManager
+from core.plugin_interface import PluginState
 
 logger = logging.getLogger(__name__)
 

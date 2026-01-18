@@ -1,0 +1,15 @@
+name: "hello-plugin"
+version: "1.0.0"
+description: "一个简单的测试插件，演示插件系统的基本功能"
+author: "R-Link Team"
+binary: "hello-plugin.exe"
+config_template:
+  message: "Hello from R-Link!"
+  interval: 5
+default_config:
+  message: "Hello from R-Link!"
+  interval: 5
+commands:
+  ping: "测试插件响应"
+  info: "获取插件信息"
+category: "general"
