@@ -1,0 +1,35 @@
+name: docker-manager
+version: 1.0.0
+description: Docker 容器管理插件 - 支持容器、镜像、网络和卷的管理
+author: R-Link
+entry: __init__.py
+category: system
+builtin: true
+icon: icon.png
+
+config:
+  auto_refresh: true
+  refresh_interval: 5
+
+dependencies:
+  - software-installer
+
+commands:
+  check_available: 检查 Docker 是否可用
+  version: 获取 Docker 版本信息
+  info: 获取 Docker 系统信息
+  list_containers: 列出所有容器
+  list_images: 列出所有镜像
+  get_container: 获取容器详情
+  get_container_logs: 获取容器日志
+  get_container_stats: 获取容器统计信息
+  start_container: 启动容器
+  stop_container: 停止容器
+  restart_container: 重启容器
+  remove_container: 删除容器
+  create_container: 创建并启动容器
+  pull_image: 拉取镜像
+  remove_image: 删除镜像
+  list_networks: 列出网络
+  list_volumes: 列出卷
+  get_system_stats: 获取系统统计

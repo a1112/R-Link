@@ -177,13 +177,13 @@ async def get_all_plugin_status():
 
     return {
         name: {
-            "status": state.status.value,
-            "pid": state.pid,
-            "port": state.port,
-            "uptime": state.uptime,
-            "memory_usage": state.memory_usage,
-            "cpu_usage": state.cpu_usage,
-            "last_error": state.last_error
+            "status": state.status.value if state else "unknown",
+            "pid": state.pid if state else None,
+            "port": state.port if state else None,
+            "uptime": state.uptime if state else 0,
+            "memory_usage": state.memory_usage if state else 0,
+            "cpu_usage": state.cpu_usage if state else 0,
+            "last_error": state.last_error if state else None
         }
         for name, state in statuses.items()
     }

@@ -1,18 +1,24 @@
 [submodule "submodules/sunshine"]
 	path = submodules/sunshine
 	url = https://github.com/LizardByte/Sunshine.git
+	ignore = dirty
 [submodule "submodules/moonlight"]
 	path = submodules/moonlight
 	url = https://github.com/moonlight-stream/moonlight-qt.git
+	ignore = dirty
 [submodule "submodules/netbird"]
 	path = submodules/netbird
 	url = https://github.com/netbirdio/netbird.git
+	ignore = dirty
 [submodule "submodules/rclone"]
 	path = submodules/rclone
 	url = https://github.com/rclone/rclone.git
+	ignore = dirty
 [submodule "submodules/frp"]
 	path = submodules/frp
 	url = https://github.com/fatedier/frp.git
+	ignore = dirty
 [submodule "submodules/rustdesk"]
 	path = submodules/rustdesk
 	url = https://github.com/rustdesk/rustdesk.git
+	ignore = dirty

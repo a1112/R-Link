@@ -1,0 +1,20 @@
+name: software-installer
+version: 1.0.0
+description: 软件自动安装插件 - 支持 Docker、Git、Node.js 等软件的检测和安装
+author: R-Link
+entry: __init__.py
+category: system
+builtin: true
+icon: icon.png
+
+config:
+  auto_check: true
+  check_interval: 3600
+  notify_updates: true
+
+commands:
+  get_system_info: 获取系统信息
+  check_all: 检查所有支持的软件
+  check_software: 检查指定软件是否安装
+  install_software: 安装指定软件
+  get_available_software: 获取可安装的软件列表

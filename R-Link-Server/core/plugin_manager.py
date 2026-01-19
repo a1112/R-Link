@@ -2,17 +2,21 @@
 Plugin Manager
 
 Responsible for plugin discovery, loading, and management
+Supports both binary plugins (exe) and Python plugins (.py)
 """
 import os
 import json
 import yaml
 import logging
-from typing import Dict, List, Optional, Any
+import importlib.util
+import sys
+from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .plugin_interface import PluginInfo, PluginState, PluginStatus, IPlugin
 from .process_pool import ProcessPool
+from .python_plugin import PythonPlugin, PythonPluginInfo, PythonPluginManager
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,7 @@ class PluginManifest:
     version: str
     description: str
     author: str
-    binary: str
+    binary: str  # For binary plugins
     config_template: Dict[str, Any] = field(default_factory=dict)
     default_config: Dict[str, Any] = field(default_factory=dict)
     commands: Dict[str, str] = field(default_factory=dict)
@@ -32,7 +36,7 @@ class PluginManifest:
     icon: Optional[str] = None
     category: str = "general"
     builtin: bool = False
-    ui_template: Optional[str] = None  # Frontend template name
+    ui_template: Optional[str] = None
 
 
 class BinaryPlugin:
@@ -150,25 +154,42 @@ class BinaryPlugin:
 
 
 class PluginManager:
-    """Plugin Manager"""
+    """Plugin Manager - 支持二进制插件和 Python 插件"""
 
     def __init__(self, plugins_dir: str = "plugins", builtin_dir: str = "builtin"):
         self.plugins_dir = plugins_dir
         self.builtin_dir = builtin_dir
-        self.plugins: Dict[str, BinaryPlugin] = {}
+        self.plugins: Dict[str, Union[BinaryPlugin, PythonPlugin]] = {}
         self.process_pool = ProcessPool()
+        self.python_plugin_manager = PythonPluginManager(plugins_dir, builtin_dir)
         self._load_plugins()
 
     def _load_plugins(self):
-        """Load all plugins (user + builtin)"""
-        # Load user plugins
-        self._load_from_dir(self.plugins_dir, "user")
+        """加载所有插件（二进制 + Python）"""
+        # 加载二进制插件
+        self._load_binary_plugins()
+        # 加载 Python 插件
+        self._load_python_plugins()
 
-        # Load builtin plugins
-        self._load_from_dir(self.builtin_dir, "builtin")
+    def _load_binary_plugins(self):
+        """加载二进制插件"""
+        self._load_from_dir(self.plugins_dir, "user", "binary")
+        self._load_from_dir(self.builtin_dir, "builtin", "binary")
 
-    def _load_from_dir(self, dir_path: str, dir_type: str):
-        """Load plugins from specified directory"""
+    def _load_python_plugins(self):
+        """加载 Python 插件"""
+        self._load_from_dir(self.plugins_dir, "user", "python")
+        self._load_from_dir(self.builtin_dir, "builtin", "python")
+
+    def _load_from_dir(self, dir_path: str, dir_type: str, plugin_type: str = "binary"):
+        """
+        从目录加载插件
+
+        Args:
+            dir_path: 插件目录路径
+            dir_type: 目录类型 (user/builtin)
+            plugin_type: 插件类型 (binary/python)
+        """
         plugins_path = Path(dir_path)
 
         if not plugins_path.exists():
@@ -185,122 +206,273 @@ class PluginManager:
             if not plugin_dir.is_dir():
                 continue
 
-            manifest_file = plugin_dir / "manifest.yaml"
-            if not manifest_file.exists():
-                manifest_file = plugin_dir / "manifest.json"
+            # Python 插件可能有单独的目录
+            if plugin_type == "python" or (plugin_type == "binary" and not self._has_binary_plugin(plugin_dir)):
+                self._load_python_plugin_from_dir(plugin_dir, dir_type)
+            else:
+                self._load_binary_plugin_from_dir(plugin_dir, dir_type)
 
-            if not manifest_file.exists():
-                logger.warning(f"No manifest found in {plugin_dir.name}")
-                continue
+    def _has_binary_plugin(self, plugin_dir: Path) -> bool:
+        """检查目录中是否包含二进制文件"""
+        # 检查是否有 manifest.yaml/json 或 .exe 文件
+        has_manifest = (plugin_dir / "manifest.yaml").exists() or (plugin_dir / "manifest.json").exists()
+        has_binary = any(
+            f.suffix in [".exe", ""] for f in plugin_dir.iterdir()
+        )
+        # 检查是否有 .py 文件
+        has_python = any(f.suffix == ".py" for f in plugin_dir.iterdir() if f.is_file())
 
+        return has_manifest and (has_binary or not has_python)
+
+    def _load_binary_plugin_from_dir(self, plugin_dir: Path, dir_type: str):
+        """从目录加载二进制插件"""
+        manifest_file = plugin_dir / "manifest.yaml"
+        if not manifest_file.exists():
+            manifest_file = plugin_dir / "manifest.json"
+
+        if not manifest_file.exists():
+            logger.warning(f"No manifest found in {plugin_dir.name}")
+            return
+
+        try:
+            manifest = self._load_manifest(manifest_file)
+            manifest.builtin = (dir_type == "builtin")
+
+            plugin = BinaryPlugin(
+                manifest=manifest,
+                plugin_dir=str(plugin_dir),
+                process_pool=self.process_pool
+            )
+            self.plugins[manifest.name] = plugin
+            logger.info(f"Loaded {dir_type} binary plugin: {manifest.name} v{manifest.version}")
+
+        except Exception as e:
+            logger.error(f"Error loading {dir_type} binary plugin {plugin_dir.name}: {e}")
+
+    def _load_python_plugin_from_dir(self, plugin_dir: Path, dir_type: str):
+        """从目录加载 Python 插件"""
+        # 首先尝试加载 manifest
+        manifest_file = plugin_dir / "manifest.yaml"
+        if manifest_file.exists():
             try:
-                manifest = self._load_manifest(manifest_file)
+                import yaml
+                with open(manifest_file, 'r', encoding='utf-8') as f:
+                    data = yaml.safe_load(f)
 
-                # If no builtin field, set based on directory type
-                if not hasattr(manifest, 'builtin'):
-                    manifest.builtin = (dir_type == "builtin")
+                data["builtin"] = (dir_type == "builtin")
+                info = PythonPluginInfo(**data)
 
-                plugin = BinaryPlugin(
-                    manifest=manifest,
-                    plugin_dir=str(plugin_dir),
-                    process_pool=self.process_pool
-                )
-                self.plugins[manifest.name] = plugin
-                logger.info(f"Loaded {dir_type} plugin: {manifest.name} v{manifest.version}")
+                plugin = PythonPlugin(info, str(plugin_dir))
+                self.plugins[info.name] = plugin
+                logger.info(f"Loaded {dir_type} Python plugin: {info.name}")
+                return
 
             except Exception as e:
-                logger.error(f"Error loading {dir_type} plugin {plugin_dir.name}: {e}")
+                logger.error(f"Error loading Python plugin manifest from {plugin_dir.name}: {e}")
 
-    def _load_manifest(self, manifest_path: Path) -> PluginManifest:
-        """Load plugin manifest"""
-        with open(manifest_path, 'r', encoding='utf-8') as f:
-            if manifest_path.suffix == '.yaml' or manifest_path.suffix == '.yml':
-                data = yaml.safe_load(f)
+        # 如果没有 manifest，尝试自动检测
+        py_files = list(plugin_dir.glob("*.py"))
+        if py_files:
+            self._load_python_plugin_without_manifest(plugin_dir, py_files[0], dir_type)
+        else:
+            # 检查是否有 __init__.py
+            init_file = plugin_dir / "__init__.py"
+            if init_file.exists():
+                self._load_python_package_plugin(plugin_dir, dir_type)
             else:
-                data = json.load(f)
-        return PluginManifest(**data)
+                logger.warning(f"No valid Python plugin found in {plugin_dir.name}")
+
+    def _load_python_plugin_without_manifest(self, plugin_dir: Path, entry_file: Path, dir_type: str):
+        """加载没有 manifest 的 Python 插件"""
+        name = plugin_dir.name
+        entry_file = entry_file.name
+
+        info = PythonPluginInfo(
+            name=name,
+            version="1.0.0",
+            description=f"{name} Python plugin",
+            author="R-Link",
+            entry_file=entry_file.name,
+            category="general",
+            builtin=(dir_type == "builtin")
+        )
+
+        plugin = PythonPlugin(info, str(plugin_dir))
+        self.plugins[info.name] = plugin
+        logger.info(f"Loaded {dir_type} Python plugin (no manifest): {info.name}")
+
+    def _load_python_package_plugin(self, plugin_dir: Path, dir_type: str):
+        """加载 Python 包插件"""
+        name = plugin_dir.name
+
+        info = PythonPluginInfo(
+            name=name,
+            version="1.0.0",
+            description=f"{name} Python package plugin",
+            author="R-Link",
+            entry_file="__init__.py",
+            category="general",
+            builtin=(dir_type == "builtin")
+        )
+
+        plugin = PythonPlugin(info, str(plugin_dir))
+        self.plugins[info.name] = plugin
+        logger.info(f"Loaded {dir_type} Python package plugin: {info.name}")
 
     def get_all_plugins(self) -> List[PluginInfo]:
         """Get all plugin info"""
-        return [plugin.get_info() for plugin in self.plugins.values()]
+        result = []
+        for plugin in self.plugins.values():
+            if isinstance(plugin, BinaryPlugin):
+                result.append(plugin.get_info())
+            elif isinstance(plugin, PythonPlugin):
+                result.append(plugin.get_info())
+        return result
 
-    def get_plugin(self, name: str) -> Optional[BinaryPlugin]:
-        """Get specified plugin"""
+    def get_plugin(self, name: str) -> Optional[Union[BinaryPlugin, PythonPlugin]]:
+        """获取指定插件"""
         return self.plugins.get(name)
 
     def is_builtin(self, name: str) -> bool:
-        """Check if plugin is builtin"""
+        """检查是否为内置插件"""
         plugin = self.get_plugin(name)
-        return plugin is not None and plugin.manifest.builtin if plugin else False
+        if not plugin:
+            return False
+        if isinstance(plugin, BinaryPlugin):
+            return plugin.manifest.builtin
+        elif isinstance(plugin, PythonPlugin):
+            return plugin.info.builtin
+        return False
 
     def get_builtin_plugins(self) -> List[str]:
-        """Get all builtin plugin names"""
-        return [name for name, plugin in self.plugins.items() if plugin.manifest.builtin]
+        """获取所有内置插件名称"""
+        builtin = []
+        for name, plugin in self.plugins.items():
+            if isinstance(plugin, BinaryPlugin):
+                if plugin.manifest.builtin:
+                    builtin.append(name)
+            elif isinstance(plugin, PythonPlugin):
+                if plugin.info.builtin:
+                    builtin.append(name)
+        return builtin
 
     def get_user_plugins(self) -> List[str]:
-        """Get all user plugin names"""
-        return [name for name, plugin in self.plugins.items() if not plugin.manifest.builtin]
+        """获取所有用户插件名称"""
+        user = []
+        for name, plugin in self.plugins.items():
+            if isinstance(plugin, BinaryPlugin):
+                if not plugin.manifest.builtin:
+                    user.append(name)
+            elif isinstance(plugin, PythonPlugin):
+                if not plugin.info.builtin:
+                    user.append(name)
+        return user
 
     def start_plugin(self, name: str, config: Dict[str, Any] = None) -> bool:
-        """Start plugin"""
+        """启动插件"""
         plugin = self.get_plugin(name)
         if not plugin:
             logger.error(f"Plugin {name} not found")
             return False
-        return plugin.start(config)
+
+        if isinstance(plugin, PythonPlugin):
+            return plugin.start(config)
+        else:
+            return plugin.start(config)
 
     def stop_plugin(self, name: str) -> bool:
-        """Stop plugin (builtin plugins cannot be stopped)"""
+        """停止插件（内置插件不能停止）"""
         plugin = self.get_plugin(name)
         if not plugin:
             return False
-        if plugin.manifest.builtin:
-            logger.warning(f"Cannot stop builtin plugin: {name}")
+
+        if isinstance(plugin, PythonPlugin):
+            return plugin.stop()
+        elif isinstance(plugin, BinaryPlugin):
+            if plugin.manifest.builtin:
+                logger.warning(f"Cannot stop builtin plugin: {name}")
+                return False
+            return plugin.stop()
+        else:
             return False
-        return plugin.stop()
 
     def restart_plugin(self, name: str) -> bool:
-        """Restart plugin"""
+        """重启插件"""
         plugin = self.get_plugin(name)
         if not plugin:
             return False
         return plugin.restart()
 
     def get_plugin_status(self, name: str) -> Optional[PluginState]:
-        """Get plugin status"""
+        """获取插件状态"""
         plugin = self.get_plugin(name)
         if not plugin:
             return None
-        return plugin.get_status()
+
+        if isinstance(plugin, PythonPlugin):
+            status = plugin.get_status()
+            # 转换为 PluginState
+            return PluginState(
+                status=PluginStatus.STOPPED if status["status"] == "loaded" else PluginStatus.RUNNING,
+                pid=status.get("pid"),
+                port=status.get("port"),
+                uptime=status.get("uptime", 0),
+                memory_usage=status.get("memory_usage", 0),
+                cpu_usage=status.get("cpu_usage", 0),
+                last_error=status.get("last_error")
+            )
+        else:
+            return plugin.get_status()
 
     def get_all_statuses(self) -> Dict[str, PluginState]:
-        """Get all plugin statuses"""
+        """获取所有插件状态"""
         return {
             name: plugin.get_status()
             for name, plugin in self.plugins.items()
         }
 
     def get_plugin_config(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get plugin config"""
+        """获取插件配置"""
         plugin = self.get_plugin(name)
         if not plugin:
             return None
         return plugin.get_config()
 
     def set_plugin_config(self, name: str, config: Dict[str, Any]) -> bool:
-        """Set plugin config"""
+        """设置插件配置"""
         plugin = self.get_plugin(name)
         if not plugin:
             return False
         return plugin.set_config(config)
 
     def get_plugin_logs(self, name: str, lines: int = 100) -> str:
-        """Get plugin logs"""
+        """获取插件日志"""
         plugin = self.get_plugin(name)
         if not plugin:
             return ""
         return plugin.get_logs(lines)
 
+    def execute_command(self, name: str, command: str, args: Dict[str, Any] = None) -> Any:
+        """执行插件命令"""
+        plugin = self.get_plugin(name)
+        if not plugin:
+            return {"error": "Plugin not found"}
+
+        if isinstance(plugin, PythonPlugin):
+            return plugin.execute_command(command, args)
+        else:
+            # 二进制插件不支持自定义命令
+            return {"error": "Command not supported by binary plugins"}
+
     def cleanup(self):
-        """Cleanup all plugins"""
+        """清理所有插件"""
         self.process_pool.cleanup()
+
+    def _load_manifest(self, manifest_path: Path) -> PluginManifest:
+        """加载插件清单"""
+        with open(manifest_path, 'r', encoding='utf-8') as f:
+            if manifest_path.suffix in ['.yaml', '.yml']:
+                data = yaml.safe_load(f)
+            else:
+                data = json.load(f)
+        return PluginManifest(**data)
