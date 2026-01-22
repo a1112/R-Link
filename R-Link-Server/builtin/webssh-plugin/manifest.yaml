@@ -1,0 +1,20 @@
+name: webssh-plugin
+version: 1.0.0
+description: Web SSH 终端插件 - 支持浏览器中通过 SSH 连接远程服务器
+author: R-Link Team
+entry: __init__.py
+category: network
+builtin: true
+icon: icon.png
+
+config:
+  max_connections: 10
+  connection_timeout: 30
+  keepalive_interval: 30
+
+dependencies: []
+
+commands:
+  list_connections: 列出所有活动连接
+  close_connection: 关闭指定连接
+  get_connection_info: 获取连接信息
