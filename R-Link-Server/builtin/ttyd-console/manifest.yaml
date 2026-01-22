@@ -1,0 +1,25 @@
+name: ttyd-console
+version: 1.0.0
+description: Web 控制台插件 - 使用 ttyd.exe 提供浏览器终端访问
+author: R-Link Team
+entry: __init__.py
+category: system
+builtin: true
+icon: icon.png
+
+config:
+  ttyd_path: ttyd.exe
+  ttyd_port: 7681
+  command: cmd.exe
+  enable_nginx_proxy: true
+  nginx_location: /console
+
+dependencies:
+  - nginx-plugin
+
+commands:
+  start_ttyd: 启动 ttyd 服务
+  stop_ttyd: 停止 ttyd 服务
+  restart_ttyd: 重启 ttyd 服务
+  get_status: 获取 ttyd 状态
+  get_url: 获取控制台访问地址
