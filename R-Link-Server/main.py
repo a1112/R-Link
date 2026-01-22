@@ -20,9 +20,13 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 from core.plugin_manager import PluginManager
+from core.supabase_auth import auth_manager
 from api.plugins import router as plugins_router, set_plugin_manager
 from api.system import router as system_router
 from api.plugin_sources import router as sources_router
+from api.auth import router as auth_router
+from api.ssh import router as ssh_router
+from api.console import router as console_router, set_plugin_manager as set_console_plugin_manager
 
 # 配置日志
 # 创建必要的目录
@@ -55,6 +59,7 @@ async def lifespan(app: FastAPI):
     # 初始化插件管理器（用户插件 + 内置插件）
     plugin_manager = PluginManager(plugins_dir="plugins", builtin_dir="builtin")
     set_plugin_manager(plugin_manager)
+    set_console_plugin_manager(plugin_manager)
 
     # 打印已加载的插件
     plugins = plugin_manager.get_all_plugins()
@@ -66,6 +71,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down R-Link-Server...")
     if plugin_manager:
         plugin_manager.cleanup()
+    await auth_manager.close()
 
 
 # 创建 FastAPI 应用
@@ -86,9 +92,12 @@ app.add_middleware(
 )
 
 # 注册路由
+app.include_router(auth_router)
 app.include_router(plugins_router)
 app.include_router(system_router)
 app.include_router(sources_router)
+app.include_router(ssh_router)
+app.include_router(console_router)
 
 
 # 根路径

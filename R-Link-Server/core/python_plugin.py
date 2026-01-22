@@ -197,6 +197,16 @@ class PythonPlugin:
             logger.error(f"Failed to stop plugin {self.info.name}: {e}")
             return False
 
+    def restart(self) -> bool:
+        """重启插件"""
+        config = self.get_config()
+        self.stop()
+        return self.start(config)
+
+    def get_info(self) -> PythonPluginInfo:
+        """获取插件信息"""
+        return self.info
+
     def get_status(self) -> Dict[str, Any]:
         """获取插件状态"""
         return {
@@ -205,6 +215,10 @@ class PythonPlugin:
             "running": self.status == PythonPluginStatus.RUNNING,
             "has_instance": self.instance is not None,
         }
+
+    def get_logs(self, lines: int = 100) -> str:
+        """获取插件日志（Python 插件没有进程日志）"""
+        return f"Python plugin {self.info.name} has no process logs."
 
     def get_config(self) -> Dict[str, Any]:
         """获取配置"""

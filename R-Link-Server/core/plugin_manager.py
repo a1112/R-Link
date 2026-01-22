@@ -213,16 +213,41 @@ class PluginManager:
                 self._load_binary_plugin_from_dir(plugin_dir, dir_type)
 
     def _has_binary_plugin(self, plugin_dir: Path) -> bool:
-        """检查目录中是否包含二进制文件"""
-        # 检查是否有 manifest.yaml/json 或 .exe 文件
-        has_manifest = (plugin_dir / "manifest.yaml").exists() or (plugin_dir / "manifest.json").exists()
-        has_binary = any(
-            f.suffix in [".exe", ""] for f in plugin_dir.iterdir()
-        )
-        # 检查是否有 .py 文件
+        """检查目录中是否包含二进制插件"""
+        # 检查 manifest 文件中的 binary 字段
+        manifest_file = plugin_dir / "manifest.yaml"
+        if not manifest_file.exists():
+            manifest_file = plugin_dir / "manifest.json"
+
+        if manifest_file.exists():
+            try:
+                with open(manifest_file, 'r', encoding='utf-8') as f:
+                    if manifest_file.suffix in ['.yaml', '.yml']:
+                        import yaml
+                        data = yaml.safe_load(f)
+                    else:
+                        data = json.load(f)
+                # 如果 manifest 中有 binary 字段，则是二进制插件
+                if 'binary' in data:
+                    return True
+                # 如果有 entry 字段，则是 Python 插件
+                if 'entry' in data or 'entry_file' in data:
+                    return False
+            except Exception:
+                pass
+
+        # 没有 manifest 或无法读取，通过文件类型判断
+        has_binary = any(f.suffix in [".exe", ""] for f in plugin_dir.iterdir() if f.is_file())
         has_python = any(f.suffix == ".py" for f in plugin_dir.iterdir() if f.is_file())
 
-        return has_manifest and (has_binary or not has_python)
+        # 如果有二进制文件且没有 .py 文件（排除 build 目录），则是二进制插件
+        if has_binary and not has_python:
+            return True
+        # 如果有 __init__.py，可能是 Python 包插件
+        if (plugin_dir / "__init__.py").exists():
+            return False
+        # 默认当作 Python 插件
+        return False
 
     def _load_binary_plugin_from_dir(self, plugin_dir: Path, dir_type: str):
         """从目录加载二进制插件"""
@@ -259,8 +284,22 @@ class PluginManager:
                 with open(manifest_file, 'r', encoding='utf-8') as f:
                     data = yaml.safe_load(f)
 
-                data["builtin"] = (dir_type == "builtin")
-                info = PythonPluginInfo(**data)
+                # 字段映射：manifest -> PythonPluginInfo
+                mapped_data = {
+                    "name": data.get("name", plugin_dir.name),
+                    "version": data.get("version", "1.0.0"),
+                    "description": data.get("description", ""),
+                    "author": data.get("author", "Unknown"),
+                    "entry_file": data.get("entry", "__init__.py"),
+                    "category": data.get("category", "general"),
+                    "builtin": data.get("builtin", dir_type == "builtin"),
+                    "icon": data.get("icon"),
+                    "ui_template": data.get("ui_template"),
+                    "default_config": data.get("config", {}),
+                    "dependencies": data.get("dependencies", []),
+                }
+
+                info = PythonPluginInfo(**mapped_data)
 
                 plugin = PythonPlugin(info, str(plugin_dir))
                 self.plugins[info.name] = plugin
@@ -285,14 +324,14 @@ class PluginManager:
     def _load_python_plugin_without_manifest(self, plugin_dir: Path, entry_file: Path, dir_type: str):
         """加载没有 manifest 的 Python 插件"""
         name = plugin_dir.name
-        entry_file = entry_file.name
+        entry_filename = entry_file.name
 
         info = PythonPluginInfo(
             name=name,
             version="1.0.0",
             description=f"{name} Python plugin",
             author="R-Link",
-            entry_file=entry_file.name,
+            entry_file=entry_filename,
             category="general",
             builtin=(dir_type == "builtin")
         )
@@ -326,7 +365,18 @@ class PluginManager:
             if isinstance(plugin, BinaryPlugin):
                 result.append(plugin.get_info())
             elif isinstance(plugin, PythonPlugin):
-                result.append(plugin.get_info())
+                # 将 PythonPluginInfo 转换为 PluginInfo
+                info = plugin.get_info()
+                plugin_info = PluginInfo(
+                    name=info.name,
+                    version=info.version,
+                    description=info.description,
+                    author=info.author,
+                    binary_path=plugin.plugin_dir,  # Python 插件使用插件目录作为路径
+                    config_path=plugin.config_path,
+                    icon=info.icon
+                )
+                result.append(plugin_info)
         return result
 
     def get_plugin(self, name: str) -> Optional[Union[BinaryPlugin, PythonPlugin]]:
@@ -426,10 +476,33 @@ class PluginManager:
 
     def get_all_statuses(self) -> Dict[str, PluginState]:
         """获取所有插件状态"""
-        return {
-            name: plugin.get_status()
-            for name, plugin in self.plugins.items()
-        }
+        result = {}
+        for name, plugin in self.plugins.items():
+            if isinstance(plugin, BinaryPlugin):
+                result[name] = plugin.get_status()
+            elif isinstance(plugin, PythonPlugin):
+                status = plugin.get_status()
+                # 转换 dict 为 PluginState
+                status_value = status.get("status", "unknown")
+                if status_value == "loaded":
+                    plugin_status = PluginStatus.STOPPED
+                elif status_value == "running":
+                    plugin_status = PluginStatus.RUNNING
+                elif status_value == "error":
+                    plugin_status = PluginStatus.ERROR
+                else:
+                    plugin_status = PluginStatus.STOPPED
+
+                result[name] = PluginState(
+                    status=plugin_status,
+                    pid=status.get("pid"),
+                    port=status.get("port"),
+                    uptime=status.get("uptime", 0),
+                    memory_usage=status.get("memory_usage", 0),
+                    cpu_usage=status.get("cpu_usage", 0),
+                    last_error=status.get("last_error")
+                )
+        return result
 
     def get_plugin_config(self, name: str) -> Optional[Dict[str, Any]]:
         """获取插件配置"""
