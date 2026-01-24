@@ -176,20 +176,51 @@ async def get_available_plugins():
     all_plugins = []
 
     for source in enabled_sources:
+        # 官方源：从本地 R-Plugin API 获取可用插件（如果正在运行）
         if source.id == "official":
-            all_plugins.append({
-                "id": "hello-plugin",
-                "name": "Hello World",
-                "description": "一个简单的测试插件",
-                "version": "1.0.0",
-                "author": "R-Link Team",
-                "source_id": source.id,
-                "source_name": source.name,
-                "download_url": f"{source.url}/releases/download/v1.0.0/hello-plugin.zip",
-                "size": "5.2 MB",
-                "downloads": 1250,
-                "verified": True
-            })
+            try:
+                import httpx
+                # 尝试连接到本地 R-Plugin 服务
+                with httpx.Client(timeout=2.0) as client:
+                    response = client.get("http://localhost:8001/api/plugins/")
+                    response.raise_for_status()
+                    plugins = response.json()
+
+                    for plugin in plugins:
+                        # 排除内置插件
+                        if plugin.get("name", "").endswith('-builtin') or plugin.get("name", "").startswith('_'):
+                            continue
+
+                        all_plugins.append({
+                            "id": plugin.get("name", plugin.get("id", "")),
+                            "name": plugin.get("name", plugin.get("id", "")),
+                            "description": plugin.get("description", ""),
+                            "version": plugin.get("version", "1.0.0"),
+                            "author": plugin.get("author", "Unknown"),
+                            "source_id": source.id,
+                            "source_name": source.name,
+                            # 使用本地 R-Plugin 下载 API
+                            "download_url": f"http://localhost:8001/api/plugins/{plugin.get('name')}/download",
+                            "size": plugin.get("size", "1.0 MB"),
+                            "downloads": plugin.get("downloads", 0),
+                            "verified": True
+                        })
+            except Exception as e:
+                logger.warning(f"Failed to fetch plugins from local R-Plugin: {e}")
+                # 回退到示例插件（用于测试）
+                all_plugins.append({
+                    "id": "hello-world",
+                    "name": "Hello World",
+                    "description": "一个简单的测试插件（注意：需要本地 R-Plugin 服务运行）",
+                    "version": "1.0.0",
+                    "author": "R-Link Team",
+                    "source_id": source.id,
+                    "source_name": source.name,
+                    "download_url": "http://localhost:8001/api/plugins/hello-world/download",
+                    "size": "1.0 MB",
+                    "downloads": 0,
+                    "verified": True
+                })
 
     return {"plugins": all_plugins}
 
