@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@openai/codex": "^0.87.0"
+    "@openai/codex": "^0.87.0",
+    "@std/assert": "npm:@jsr/std__assert@^0.221.0"
   }
 }
