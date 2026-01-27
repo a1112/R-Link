@@ -35,18 +35,4 @@ Thumbs.db
 
 # 子模块 (已由 Git 管理，但保留忽略以防万一)
 # submodules/
-/node_modules/.bin/codex
-/node_modules/.bin/codex.cmd
-/node_modules/.bin/codex.ps1
-/node_modules/@openai/codex/bin/rg
-/node_modules/@openai/codex/vendor/aarch64-apple-darwin/codex/codex
-/node_modules/@openai/codex/vendor/aarch64-apple-darwin/path/rg
-/node_modules/@openai/codex/vendor/aarch64-unknown-linux-musl/codex/codex
-/node_modules/@openai/codex/vendor/aarch64-unknown-linux-musl/path/rg
-/node_modules/@openai/codex/vendor/x86_64-apple-darwin/codex/codex
-/node_modules/@openai/codex/vendor/x86_64-apple-darwin/path/rg
-/node_modules/@openai/codex/vendor/x86_64-unknown-linux-musl/codex/codex
-/node_modules/@openai/codex/vendor/x86_64-unknown-linux-musl/path/rg
-/node_modules/@openai/codex/package.json
-/node_modules/@openai/codex/README.md
-/node_modules/.package-lock.json
+node_modules/
