@@ -134,7 +134,7 @@ def main():
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8210,
         reload=True,  # 开发模式，生产环境设置为 False
         log_level="info"
     )
