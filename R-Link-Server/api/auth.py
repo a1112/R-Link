@@ -5,7 +5,8 @@
 """
 import logging
 from typing import Optional
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 from core.supabase_auth import auth_manager, require_auth, get_current_user
 
@@ -14,8 +15,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
 
+class WebSocketTokenResponse(BaseModel):
+    token: str = Field(..., description="Short-lived websocket token")
+    scope: str = Field(..., description="Token scope")
+    expires_in: int = Field(..., description="Token lifetime in seconds")
+
+
 @router.get("/session")
-async def get_session(user: dict = require_auth):
+async def get_session(user: dict = Depends(require_auth)):
     """
     获取当前会话信息
 
@@ -83,8 +90,16 @@ async def refresh_session(refresh_token: str):
     }
 
 
+@router.post("/ws-token", response_model=WebSocketTokenResponse)
+async def issue_websocket_token(user: dict = Depends(require_auth)):
+    """签发 SSH WebSocket 专用短期票据。"""
+    ttl_seconds = 60
+    token = await auth_manager.issue_websocket_token(user, scope="ssh", ttl_seconds=ttl_seconds)
+    return WebSocketTokenResponse(token=token, scope="ssh", expires_in=ttl_seconds)
+
+
 @router.get("/me")
-async def get_current_user_info(user: dict = require_auth):
+async def get_current_user_info(user: dict = Depends(require_auth)):
     """
     获取当前用户信息
 
@@ -94,7 +109,7 @@ async def get_current_user_info(user: dict = require_auth):
 
 
 @router.post("/logout")
-async def logout(user: dict = require_auth):
+async def logout(user: dict = Depends(require_auth)):
     """
     登出（前端负责清除 token）
 

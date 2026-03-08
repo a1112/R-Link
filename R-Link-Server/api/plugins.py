@@ -1,7 +1,7 @@
 """
 插件相关的 API 路由
 """
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
@@ -14,10 +14,15 @@ from pathlib import Path
 
 from core.plugin_manager import PluginManager
 from core.plugin_interface import PluginState
+from core.supabase_auth import require_auth
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/plugins", tags=["plugins"])
+router = APIRouter(
+    prefix="/api/plugins",
+    tags=["plugins"],
+    dependencies=[Depends(require_auth)],
+)
 
 # 全局插件管理器实例（在 main.py 中初始化）
 plugin_manager: Optional[PluginManager] = None
@@ -440,7 +445,7 @@ async def _extract_and_install_zip(zip_path: Path, target_dir: str) -> str:
     temp_extract.mkdir(parents=True, exist_ok=True)
 
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(temp_extract)
+        _safe_extract_zip(zip_ref, temp_extract)
 
     # 查找包含 manifest 的目录
     manifest_path = None
@@ -469,6 +474,23 @@ async def _extract_and_install_zip(zip_path: Path, target_dir: str) -> str:
     shutil.rmtree(temp_extract.parent)
 
     return plugin_name
+
+
+def _safe_extract_zip(zip_ref: zipfile.ZipFile, destination: Path) -> None:
+    """Safely extract ZIP contents without allowing path traversal."""
+    destination = destination.resolve()
+    for member in zip_ref.infolist():
+        member_path = Path(member.filename)
+        if member_path.is_absolute() or member_path.drive:
+            raise HTTPException(status_code=400, detail="ZIP archive contains unsafe paths")
+        if any(part == ".." for part in member_path.parts):
+            raise HTTPException(status_code=400, detail="ZIP archive contains unsafe paths")
+
+        resolved_path = (destination / member_path).resolve()
+        if resolved_path != destination and destination not in resolved_path.parents:
+            raise HTTPException(status_code=400, detail="ZIP archive contains unsafe paths")
+
+    zip_ref.extractall(destination)
 
 
 async def _create_basic_manifest(plugin_dir: Path, plugin_name: str):

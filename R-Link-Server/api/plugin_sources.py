@@ -1,14 +1,20 @@
 """
 插件源管理 API 路由
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import logging
 import json
 from pathlib import Path
 
-router = APIRouter(prefix="/api/plugin-sources", tags=["plugin-sources"])
+from core.supabase_auth import require_auth
+
+router = APIRouter(
+    prefix="/api/plugin-sources",
+    tags=["plugin-sources"],
+    dependencies=[Depends(require_auth)],
+)
 
 logger = logging.getLogger(__name__)
 

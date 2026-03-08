@@ -3,9 +3,15 @@ Supabase 认证模块
 
 处理用户认证和权限验证
 """
-import os
-import httpx
+import base64
+import hashlib
+import hmac
+import json
 import logging
+import os
+import secrets
+import time
+import httpx
 from typing import Optional, Dict, Any
 from fastapi import Security, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -29,6 +35,12 @@ class SupabaseAuth:
         self.anon_key = SUPABASE_ANON_KEY
         self.service_key = SUPABASE_SERVICE_ROLE_KEY
         self.client = httpx.AsyncClient(timeout=30.0)
+        self.websocket_secret = (
+            os.getenv("R_LINK_WS_TOKEN_SECRET")
+            or self.service_key
+            or self.anon_key
+            or "r-link-dev-websocket-secret"
+        )
 
     async def close(self):
         """关闭 HTTP 客户端"""
@@ -101,6 +113,78 @@ class SupabaseAuth:
 
         except Exception as e:
             logger.error(f"Session refresh error: {e}")
+            return None
+
+    async def issue_websocket_token(
+        self,
+        user: Dict[str, Any],
+        *,
+        scope: str,
+        ttl_seconds: int = 60,
+    ) -> str:
+        """签发短时效 WebSocket 票据。"""
+        now = int(time.time())
+        payload = {
+            "sub": user.get("id"),
+            "scope": scope,
+            "iat": now,
+            "exp": now + ttl_seconds,
+            "nonce": secrets.token_urlsafe(8),
+        }
+        return self._encode_websocket_token(payload)
+
+    async def verify_websocket_token(
+        self,
+        token: str,
+        *,
+        expected_scope: str,
+    ) -> Optional[Dict[str, Any]]:
+        """校验短时效 WebSocket 票据。"""
+        payload = self._decode_websocket_token(token)
+        if payload is None:
+            return None
+
+        if payload.get("scope") != expected_scope:
+            return None
+
+        exp = payload.get("exp")
+        sub = payload.get("sub")
+        if not isinstance(exp, int) or exp < int(time.time()) or not sub:
+            return None
+
+        return payload
+
+    def _encode_websocket_token(self, payload: Dict[str, Any]) -> str:
+        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        payload_b64 = base64.urlsafe_b64encode(payload_bytes).decode("ascii").rstrip("=")
+        signature = hmac.new(
+            self.websocket_secret.encode("utf-8"),
+            payload_b64.encode("ascii"),
+            hashlib.sha256,
+        ).digest()
+        signature_b64 = base64.urlsafe_b64encode(signature).decode("ascii").rstrip("=")
+        return f"{payload_b64}.{signature_b64}"
+
+    def _decode_websocket_token(self, token: str) -> Optional[Dict[str, Any]]:
+        try:
+            payload_b64, signature_b64 = token.split(".", 1)
+        except ValueError:
+            return None
+
+        expected_signature = hmac.new(
+            self.websocket_secret.encode("utf-8"),
+            payload_b64.encode("ascii"),
+            hashlib.sha256,
+        ).digest()
+        expected_b64 = base64.urlsafe_b64encode(expected_signature).decode("ascii").rstrip("=")
+        if not hmac.compare_digest(signature_b64, expected_b64):
+            return None
+
+        padding = "=" * (-len(payload_b64) % 4)
+        try:
+            payload_bytes = base64.urlsafe_b64decode(payload_b64 + padding)
+            return json.loads(payload_bytes.decode("utf-8"))
+        except Exception:
             return None
 
 

@@ -4,12 +4,18 @@ Console API
 """
 import logging
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+
+from core.supabase_auth import require_auth
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/console", tags=["Console"])
+router = APIRouter(
+    prefix="/api/console",
+    tags=["Console"],
+    dependencies=[Depends(require_auth)],
+)
 
 # 全局插件管理器引用
 _plugin_manager = None

@@ -131,11 +131,12 @@ async def global_exception_handler(request, exc):
 
 def main():
     """主函数"""
+    is_dev = os.getenv("DEV", "dev").lower() in {"1", "true", "yes", "on", "dev", "development"}
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=8210,
-        reload=True,  # 开发模式，生产环境设置为 False
+        reload=is_dev,
         log_level="info"
     )
 

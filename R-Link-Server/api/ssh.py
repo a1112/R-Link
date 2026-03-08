@@ -5,21 +5,55 @@ SSH WebSocket API
 import asyncio
 import json
 import logging
+import os
 import uuid
 from typing import Dict, Optional, Set, TYPE_CHECKING
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
+
+from core.supabase_auth import auth_manager, require_auth
 
 if TYPE_CHECKING:
     from asyncssh import SSHClientConnection, SSHReader, SSHWriter, SSHClientSession
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/ssh", tags=["SSH"])
+router = APIRouter(
+    prefix="/api/ssh",
+    tags=["SSH"],
+    dependencies=[Depends(require_auth)],
+)
 
 # 存储活跃的 SSH 连接
 # connection_id -> SSHConnection
 active_connections: Dict[str, "SSHConnection"] = {}
+
+
+async def _authenticate_websocket(websocket: WebSocket) -> bool:
+    """Validate the short-lived websocket token provided during the handshake."""
+    token = _extract_websocket_token(websocket)
+    if not token:
+        await websocket.close(code=1008, reason="WebSocket token required")
+        return False
+
+    claims = await auth_manager.verify_websocket_token(token, expected_scope="ssh")
+    if claims is None:
+        await websocket.close(code=1008, reason="Invalid websocket token")
+        return False
+
+    websocket.scope["r_link_ws_claims"] = claims
+    return True
+
+
+def _extract_websocket_token(websocket: WebSocket) -> Optional[str]:
+    """Extract the SSH websocket token from subprotocols or query params."""
+    offered = websocket.scope.get("subprotocols") or []
+    for protocol in offered:
+        prefix = "r-link.ssh-token."
+        if protocol.startswith(prefix):
+            return protocol[len(prefix):]
+
+    return websocket.query_params.get("ws_token")
 
 
 class SSHConnectRequest(BaseModel):
@@ -297,6 +331,9 @@ async def ssh_websocket(
         "type": "closed"       // 连接关闭
     }
     """
+    if not await _authenticate_websocket(websocket):
+        return
+
     # 生成连接 ID
     connection_id = str(uuid.uuid4())
 
@@ -311,7 +348,8 @@ async def ssh_websocket(
         username=username,
     )
 
-    await websocket.accept()
+    accepted_subprotocol = "r-link.ssh" if "r-link.ssh" in (websocket.scope.get("subprotocols") or []) else None
+    await websocket.accept(subprotocol=accepted_subprotocol)
 
     # 创建 SSH 连接包装
     conn = SSHConnection(

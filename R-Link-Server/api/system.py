@@ -1,14 +1,20 @@
 """
 系统相关的 API 路由
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 import psutil
 import platform
 from datetime import datetime
 from typing import Dict, Any
 import os
 
-router = APIRouter(prefix="/api/system", tags=["system"])
+from core.supabase_auth import require_auth
+
+router = APIRouter(
+    prefix="/api/system",
+    tags=["system"],
+    dependencies=[Depends(require_auth)],
+)
 
 
 @router.get("/info")
