@@ -15,3 +15,8 @@ pydantic>=2.0.0
 
 # CORS
 aiohttp>=3.9.0
+
+# Authentication HTTP client, form parsing, and SSH transport
+httpx>=0.28.1
+python-multipart>=0.0.20
+asyncssh>=2.14.0

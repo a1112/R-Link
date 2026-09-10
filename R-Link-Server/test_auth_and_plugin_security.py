@@ -23,7 +23,7 @@ def test_auth_routes_use_fastapi_dependency_injection() -> None:
     auth_paths = {"/api/auth/session", "/api/auth/me", "/api/auth/logout"}
     routes = {
         route.path: route
-        for route in app.routes
+        for route in auth_api.router.routes
         if getattr(route, "path", None) in auth_paths
     }
 
@@ -35,16 +35,19 @@ def test_auth_routes_use_fastapi_dependency_injection() -> None:
 
 def test_all_management_routes_require_auth_except_public_endpoints() -> None:
     public_paths = {"/", "/health", "/api/auth/verify", "/api/auth/refresh"}
-
-    for route in app.routes:
-        path = getattr(route, "path", None)
-        if not path or not (path == "/" or path == "/health" or path.startswith("/api/")):
-            continue
-
+    # OpenAPI includes mounted routers across FastAPI versions; checking only
+    # app.routes can silently skip all management endpoints with lazy routers.
+    checked = 0
+    for path, operations in app.openapi()["paths"].items():
         if path in public_paths:
             continue
-
-        assert route.dependant.dependencies, f"{path} should require authentication"
+        if not path.startswith("/api/"):
+            continue
+        for method, operation in operations.items():
+            if method in {"get", "post", "put", "patch", "delete"}:
+                assert operation.get("security"), f"{method} {path} should require authentication"
+                checked += 1
+    assert checked > 0
 
 
 def test_auth_route_parameters_are_declared_as_depends() -> None:

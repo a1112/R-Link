@@ -2,6 +2,14 @@
 
 大型集成连接工具 - 集成 FRP, P2P, 远程, WebDav, 远程组网, 串流等功能。
 
+## Web 管理界面
+
+[apps/r-link-web](apps/r-link-web/README.md) 提供登录、插件管理、控制台和 SSH 界面；开发与验证步骤见该目录说明。
+
+## Web 管理界面
+
+[apps/r-link-web](apps/r-link-web/README.md) 提供登录、插件管理、控制台和 SSH 界面；开发与验证步骤见该目录说明。
+
 ## 项目结构
 
 ```
