@@ -17,3 +17,11 @@
 `.env` 如存在，只提交值已遮蔽的归档，原文保存在迁移机器的 `.repository-consolidation-local/`（Git 忽略）。删除来源前须保留该本地配置备份。没有下载大型数据集。
 
 本记录覆盖固定默认分支的文件快照；不包含完整 Git 历史、其他分支、Issues、Releases 或 GitHub 设置。当前阶段保留来源仓库，PR 合并后重新核对来源 HEAD 与目标默认分支清单，再决定删除。
+
+## Remaining dependency branch review (2026-09-11)
+
+The only additional branch, `deps/fix-wildcards-and-upgrade`, is one commit ahead of the migrated main snapshot and changes only `package.json`. Its complete original file and per-dependency decisions are preserved in [dependency-branch-review.json](dependency-branch-review.json).
+
+The wildcard-removal intent is applied using versions already resolved by the integrated client lockfile: clsx 2.1.1, react-router-dom 7.18.3, react-zoom-pan-pinch 4.2.0, and tailwind-merge 3.6.0. The older proposed router/zoom/merge ranges and lower Supabase minimum are not applied. Existing tested build-tool pins, icon version, Node types, and the framer-motion replacement remain. Removed path/motion dependencies are preserved in the source archive. No installed dependency version changes are intended.
+
+Retirement still requires merging this follow-up PR, checking both remote branch heads again, and preserving the ignored original environment configuration. Full Git history will also be retained in a local bundle before repository retirement. Native Tauri packaging and live Supabase/SSH were not verified.

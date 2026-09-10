@@ -1,0 +1,104 @@
+{
+  "source_repository": "lcxinc/R-Link-Web",
+  "source_branch": "deps/fix-wildcards-and-upgrade",
+  "source_commit": "4de0d04f64007a6159c3d1710ee6cfef48806b39",
+  "source_base_commit": "f2b95e8c6cf1b1bfa1d234bf64404d6cfb16863a",
+  "changed_paths": [
+    "package.json"
+  ],
+  "archive_path": "docs/repository-consolidation/R-Link-Web/originals/dependency-branch/package.json.source.txt",
+  "archive_git_blob": "d8ee12e91766cdfec8cd4a447a8f7d04d40549a7",
+  "decisions": [
+    {
+      "package": "@supabase/supabase-js",
+      "source_section": "dependencies",
+      "proposed": "^2.39.0",
+      "integrated": "^2.90.1",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "@tailwindcss/vite",
+      "source_section": "dependencies",
+      "proposed": "^4.1.18",
+      "integrated": "4.1.12",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "@vitejs/plugin-react-swc",
+      "source_section": "dependencies",
+      "proposed": "^3.10.2",
+      "integrated": "3.10.2",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "clsx",
+      "source_section": "dependencies",
+      "proposed": "^2.1.1",
+      "integrated": "2.1.1",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "lucide-react",
+      "source_section": "dependencies",
+      "proposed": "^0.500.0",
+      "integrated": "^0.487.0",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "motion",
+      "source_section": "dependencies",
+      "proposed": "^12.25.0",
+      "integrated": null,
+      "decision": "Removed during main migration; retain original proposal as evidence."
+    },
+    {
+      "package": "path",
+      "source_section": "dependencies",
+      "proposed": "^0.12.7",
+      "integrated": null,
+      "decision": "Removed during main migration; retain original proposal as evidence."
+    },
+    {
+      "package": "react-router-dom",
+      "source_section": "dependencies",
+      "proposed": "^6.30.2",
+      "integrated": "7.18.3",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "react-zoom-pan-pinch",
+      "source_section": "dependencies",
+      "proposed": "^3.7.0",
+      "integrated": "4.2.0",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "tailwind-merge",
+      "source_section": "dependencies",
+      "proposed": "^2.8.0",
+      "integrated": "3.6.0",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "tailwindcss",
+      "source_section": "dependencies",
+      "proposed": "^4.1.18",
+      "integrated": "4.1.12",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "vite",
+      "source_section": "dependencies",
+      "proposed": "^6.3.5",
+      "integrated": "6.4.3",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    },
+    {
+      "package": "@types/node",
+      "source_section": "devDependencies",
+      "proposed": "^22.10.0",
+      "integrated": "^20.10.0",
+      "decision": "Retain the integrated client version; wildcard entries are now pinned to the existing lockfile."
+    }
+  ]
+}
