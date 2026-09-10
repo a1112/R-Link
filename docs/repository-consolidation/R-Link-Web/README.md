@@ -1,0 +1,19 @@
+# lcxinc/R-Link-Web 迁移记录
+
+来源：`lcxinc/R-Link-Web`，默认分支提交 `f2b95e8c6cf1b1bfa1d234bf64404d6cfb16863a`，树 `a30f75994d272f6bd8ed16e73538c7fee5013c17`。
+目标基线：`2408ef4f0c98993c63fbac5f940ab4a30509ada0`，运行目录 `apps/r-link-web/`。
+
+客户端认证、API 端口、SSH 票据和构建问题已修正。服务端 HTTP 路由继续要求认证，WebSocket 使用单独的票据认证；连接注册表提取为 API 与动态插件共用模块。前端 12 项、后端 19 项测试及 Web 构建通过。
+
+## 覆盖范围
+
+共 144 个来源跟踪文件，逐项记录在 [manifest.json](manifest.json)。清单保存原始路径、文件模式、Git blob 和迁移后的路径/hash；调整过的文件在 `originals/` 保存原始字节。归档使用 `.source.txt` 后缀避免被当作配置执行。
+
+- `redacted_local_configuration`: 1
+- `migrated_with_adjustment`: 16
+- `archived_editor_metadata`: 5
+- `migrated`: 122
+
+`.env` 如存在，只提交值已遮蔽的归档，原文保存在迁移机器的 `.repository-consolidation-local/`（Git 忽略）。删除来源前须保留该本地配置备份。没有下载大型数据集。
+
+本记录覆盖固定默认分支的文件快照；不包含完整 Git 历史、其他分支、Issues、Releases 或 GitHub 设置。当前阶段保留来源仓库，PR 合并后重新核对来源 HEAD 与目标默认分支清单，再决定删除。

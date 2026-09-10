@@ -1,0 +1,99 @@
+/**
+ * Web Terminal 样式覆盖
+ */
+
+.web-terminal-container {
+  position: relative;
+}
+
+.web-terminal-container .terminal-header {
+  user-select: none;
+}
+
+.web-terminal-container .terminal-content {
+  position: relative;
+}
+
+/* xterm.js 样式覆盖 */
+.web-terminal-container .xterm {
+  height: 100%;
+  padding: 8px;
+}
+
+.web-terminal-container .xterm .xterm-viewport {
+  overflow-y: auto;
+}
+
+.web-terminal-container .xterm .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+}
+
+.web-terminal-container .xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.web-terminal-container .xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.web-terminal-container .xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 隐藏终端焦点时的边框 */
+.web-terminal-container .xterm.focus:not(.xterm-cursor-layer),
+.web-terminal-container .xterm:focus:not(.xterm-cursor-layer) {
+  outline: none;
+}
+
+/* 终端字符选择样式 */
+.web-terminal-container .xterm .xterm-selection {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.web-terminal-container .xterm .xterm-selection div {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 光标样式 */
+.web-terminal-container .xterm .xterm-cursor-layer .xterm-cursor {
+  background-color: currentColor;
+}
+
+/* 链接样式 */
+.web-terminal-container .xterm .xterm-screen .xterm-link {
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.web-terminal-container .xterm .xterm-screen .xterm-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 暗色主题特定样式 */
+.web-terminal-container .xterm .xterm-rows {
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* 亮色主题特定样式 */
+.web-terminal-container[data-theme="light"] .xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.web-terminal-container[data-theme="light"] .xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.web-terminal-container[data-theme="light"] .xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.web-terminal-container[data-theme="light"] .xterm .xterm-selection {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.web-terminal-container[data-theme="light"] .xterm .xterm-selection div {
+  background-color: rgba(0, 0, 0, 0.2);
+}

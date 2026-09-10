@@ -36,3 +36,6 @@ Thumbs.db
 # 子模块 (已由 Git 管理，但保留忽略以防万一)
 # submodules/
 node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/

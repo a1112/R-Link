@@ -21,8 +21,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/api/ssh",
     tags=["SSH"],
-    dependencies=[Depends(require_auth)],
 )
+
+from core.webssh_connections import get_connection_manager, SSHConnectionStatus
 
 # 存储活跃的 SSH 连接
 # connection_id -> SSHConnection
@@ -253,10 +254,9 @@ class SSHConnection:
         return self.client is not None and not self.closed
 
 
-@router.get("/connections")
+@router.get("/connections", dependencies=[Depends(require_auth)])
 async def list_connections():
     """列出所有活动连接"""
-    from builtin.webssh_plugin import get_connection_manager
 
     manager = get_connection_manager()
     return {
@@ -265,10 +265,9 @@ async def list_connections():
     }
 
 
-@router.post("/connections/{connection_id}/close")
+@router.post("/connections/{connection_id}/close", dependencies=[Depends(require_auth)])
 async def close_connection(connection_id: str):
     """关闭指定连接"""
-    from builtin.webssh_plugin import SSHConnectionStatus
 
     conn = active_connections.get(connection_id)
     if conn:
@@ -338,7 +337,6 @@ async def ssh_websocket(
     connection_id = str(uuid.uuid4())
 
     # 更新连接管理器
-    from builtin.webssh_plugin import get_connection_manager
 
     manager = get_connection_manager()
     ssh_conn = manager.create_connection(
@@ -436,7 +434,6 @@ async def ssh_websocket(
 
     finally:
         # 清理连接
-        from builtin.webssh_plugin import SSHConnectionStatus
         manager.update_connection_status(connection_id, SSHConnectionStatus.DISCONNECTED)
         manager.close_connection(connection_id)
         await conn.close()

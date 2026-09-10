@@ -37,9 +37,7 @@ class SupabaseAuth:
         self.client = httpx.AsyncClient(timeout=30.0)
         self.websocket_secret = (
             os.getenv("R_LINK_WS_TOKEN_SECRET")
-            or self.service_key
-            or self.anon_key
-            or "r-link-dev-websocket-secret"
+            or secrets.token_urlsafe(48)
         )
 
     async def close(self):
