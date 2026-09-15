@@ -58,6 +58,7 @@ export default defineConfig({
     target: 'esnext',
     outDir: 'dist',
   },
+  preview: { port: 17030, strictPort: true },
   server: {
     port: 4322,
     strictPort: true,
