@@ -82,7 +82,7 @@ export const WebTerminal: React.FC<TerminalProps> = ({
   const fitAddonRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const socketAttemptRef = useRef<AbortController | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [error, setError] = useState<string | null>(null);
@@ -314,6 +314,9 @@ export const WebTerminal: React.FC<TerminalProps> = ({
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      terminalInstanceRef.current?.dispose();
+      terminalInstanceRef.current = null;
+      fitAddonRef.current = null;
     };
   }, [disconnect]);
 

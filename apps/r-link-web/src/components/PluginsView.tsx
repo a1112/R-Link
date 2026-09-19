@@ -15,10 +15,12 @@ import {
   usePluginActions
 } from "@/api/hooks";
 import { PluginDetailModal } from "./PluginDetailModal";
-import type { Plugin } from "@/api/types";
+import { http } from "../api/client";
+import type { Plugin, PluginStatus } from "@/api/types";
 
 // 扩展插件类型用于UI显示
-interface PluginUI extends Plugin {
+interface PluginUI extends Omit<Plugin, "status"> {
+  status?: PluginStatus;
   rating?: number;
   downloads?: string;
   verified?: boolean;
@@ -46,8 +48,9 @@ const PluginCard: React.FC<{
   plugin: PluginUI;
   onClick: () => void;
   onStatusToggle: (plugin: PluginUI) => Promise<void>;
+  onRestart: (plugin: PluginUI) => Promise<void>;
   loading?: boolean;
-}> = ({ plugin, onClick, onStatusToggle, loading }) => {
+}> = ({ plugin, onClick, onStatusToggle, onRestart, loading }) => {
   const Icon = plugin.icon ? (() => null) : Puzzle; // 简化处理，实际应映射图标
 
   const handleStatusToggle = async (e: React.MouseEvent) => {
@@ -99,7 +102,8 @@ const PluginCard: React.FC<{
               <Square size={12} /> 停止
             </button>
             <button
-              onClick={handleStatusToggle}
+              onClick={(event) => { event.stopPropagation(); void onRestart(plugin); }}
+              aria-label={`重启 ${plugin.name}`}
               disabled={loading}
               className="px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs font-medium transition-colors"
             >
@@ -163,7 +167,7 @@ export const PluginsView: React.FC = () => {
           <Settings size={32} className="opacity-20" />
         </div>
         <p className="text-sm">无法连接到后端服务</p>
-        <p className="text-xs text-[var(--c-600)]">请确保 R-Link Server 正在运行</p>
+        <p className="text-xs text-[var(--c-600)]">{error.message}</p>
         <button
           onClick={() => refetch()}
           className="px-4 py-2 bg-[var(--c-800)] text-[var(--c-200)] rounded-lg text-sm hover:bg-[var(--c-700)] transition-colors"
@@ -224,6 +228,7 @@ export const PluginsView: React.FC = () => {
               plugin={plugin as PluginUI}
               onClick={() => setSelectedPlugin(plugin as PluginUI)}
               onStatusToggle={handleStatusToggle}
+              onRestart={handleRestart}
               loading={actionLoading}
             />
           ))}
@@ -236,20 +241,22 @@ export const PluginsView: React.FC = () => {
             plugin={{
               ...selectedPlugin,
               icon: Puzzle,
+              status: "installed",
               features: selectedPlugin.features || [],
-              rating: selectedPlugin.rating || 4.5,
+              rating: selectedPlugin.rating,
               downloads: selectedPlugin.downloads || '0',
               verified: selectedPlugin.verified || false,
             }}
             onClose={() => setSelectedPlugin(null)}
-            onInstall={() => {
-              toast.success(`已开始安装 ${selectedPlugin.name}`);
-              setSelectedPlugin(null);
-            }}
-            onUninstall={() => {
-              toast.success(`已卸载 ${selectedPlugin.name}`);
-              setSelectedPlugin(null);
-              refetch();
+            onUninstall={async () => {
+              try {
+                await http.delete('/api/plugins/uninstall', { body: JSON.stringify({ name: selectedPlugin.name }) });
+                toast.success(`已卸载 ${selectedPlugin.name}`);
+                setSelectedPlugin(null);
+                await refetch();
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : '卸载失败');
+              }
             }}
           />
         )}

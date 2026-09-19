@@ -28,7 +28,7 @@ class TTYDManager:
         self.ttyd_path = self.config.get("ttyd_path", "ttyd.exe")
         self.ttyd_port = self.config.get("ttyd_port", 7681)
         self.command = self.config.get("command", "cmd.exe")
-        self.enable_nginx_proxy = self.config.get("enable_nginx_proxy", True)
+        self.enable_nginx_proxy = self.config.get("enable_nginx_proxy", False)
         self.nginx_location = self.config.get("nginx_location", "/console")
 
         # 完整路径
@@ -177,8 +177,9 @@ class TTYDManager:
         try:
             # 构建 ttyd 命令
             cmd = [
-                str(ttyd.exe if hasattr(ttyd, 'exe') else ttyd_exe),
+                str(ttyd_exe),
                 "-p", str(self.ttyd_port),
+                "-i", "127.0.0.1",
                 "-b", "/",
             ]
 
@@ -190,7 +191,7 @@ class TTYDManager:
             # 启动进程
             self.process = subprocess.Popen(
                 cmd,
-                cwd=str(self.ttyd_exe.parent) if hasattr(ttyd_exe, 'parent') else str(ttyd_exe.parent),
+                cwd=str(ttyd_exe.parent),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
@@ -377,7 +378,7 @@ class Plugin:
             "ttyd_path": self.config.get("ttyd_path", "ttyd.exe"),
             "ttyd_port": self.config.get("ttyd_port", 7681),
             "command": self.config.get("command", "cmd.exe"),
-            "enable_nginx_proxy": self.config.get("enable_nginx_proxy", True),
+            "enable_nginx_proxy": self.config.get("enable_nginx_proxy", False),
             "nginx_location": self.config.get("nginx_location", "/console"),
         }
 

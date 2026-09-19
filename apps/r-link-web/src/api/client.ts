@@ -37,13 +37,13 @@ export class HttpClient {
     });
 
     const queryString = searchParams.toString();
-    return queryString ? `${url}?${queryString}` : url;
+    return queryString ? `${url}${url.includes('?') ? '&' : '?'}${queryString}` : url;
   }
 
   /**
    * 创建超时控制器
    */
-  private createTimeoutController(timeout: number): [AbortController, number] {
+  private createTimeoutController(timeout: number): [AbortController, ReturnType<typeof setTimeout>] {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     return [controller, timeoutId];
@@ -98,8 +98,12 @@ export class HttpClient {
 
       return await this.handleResponse<T>(response);
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        if (callerSignal?.aborted) throw error;
+        throw new Error(`请求超时: ${timeout}ms`);
+      }
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
+        if (error.name === 'AbortError' && !callerSignal?.aborted) {
           throw new Error(`请求超时: ${timeout}ms`);
         }
         throw error;
@@ -125,7 +129,7 @@ export class HttpClient {
     return this.request<T>(endpoint, {
       ...config,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data !== undefined ? JSON.stringify(data) : undefined,
     });
   }
 
@@ -136,7 +140,7 @@ export class HttpClient {
     return this.request<T>(endpoint, {
       ...config,
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data !== undefined ? JSON.stringify(data) : undefined,
     });
   }
 
@@ -147,7 +151,7 @@ export class HttpClient {
     return this.request<T>(endpoint, {
       ...config,
       method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
+      body: data !== undefined ? JSON.stringify(data) : undefined,
     });
   }
 

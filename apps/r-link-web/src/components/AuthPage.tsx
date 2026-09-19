@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { QrCode, Smartphone, Mail, ArrowRight, Github, Check, X, Loader2, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, QrCode, Smartphone, Mail, ArrowRight, Github, Check, X, Loader2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "../utils/supabase/client";
 
 // Custom Icons for Social Login

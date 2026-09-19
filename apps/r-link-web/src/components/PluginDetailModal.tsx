@@ -16,7 +16,18 @@ import {
   Zap
 } from "lucide-react";
 
-const PluginDetailModal = ({ plugin, onClose, onInstall, onUninstall }) => {
+interface DetailPlugin {
+  name: string; description: string; version: string; author: string;
+  icon?: import("lucide-react").LucideIcon; status?: string;
+  verified?: boolean; rating?: number; downloads?: string | number;
+  features?: string[]; longDescription?: string;
+}
+interface Props {
+  plugin: DetailPlugin; onClose: () => void;
+  onInstall?: (plugin: DetailPlugin) => void;
+  onUninstall?: (plugin: DetailPlugin) => void;
+}
+const PluginDetailModal = ({ plugin, onClose, onInstall, onUninstall }: Props) => {
   const [activeTab, setActiveTab] = useState("overview");
 
   if (!plugin) return null;
@@ -43,7 +54,7 @@ const PluginDetailModal = ({ plugin, onClose, onInstall, onUninstall }) => {
               <div>
                  <h2 className="text-xl font-bold text-[var(--c-100)] flex items-center gap-2">
                     {plugin.name}
-                    {plugin.verified && <ShieldCheck size={16} className="text-blue-400" title="官方认证" />}
+                    {plugin.verified && <ShieldCheck size={16} className="text-blue-400" aria-label="官方认证" />}
                  </h2>
                  <p className="text-sm text-[var(--c-400)] mt-1 max-w-md leading-relaxed">{plugin.description}</p>
                  <div className="flex items-center gap-4 text-xs text-[var(--c-500)] mt-3">

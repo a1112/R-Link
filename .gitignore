@@ -39,3 +39,7 @@ node_modules/
 __pycache__/
 *.pyc
 .pytest_cache/
+.venv/
+.repository-consolidation-local/
+logs/
+R-Link-Server/config/plugin_sources.json

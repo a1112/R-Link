@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from "react";
-import { useAuth, useSupabaseQuery, useSupabaseMutation } from "../hooks/useSupabase";
+import { useAuth, useSupabaseSubscription, useSupabaseQuery, useSupabaseMutation } from "../hooks/useSupabase";
 import { profileApi, pluginConfigApi } from "../utils/supabase/database";
 
 /**
@@ -153,7 +153,7 @@ export const UpdateProfileExample: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await mutate({ username, full_name: fullName });
+      await updateProfile({ username, full_name: fullName });
       alert("更新成功！");
     } catch (error: any) {
       alert(error.message);
@@ -294,7 +294,7 @@ export const RealtimeExample: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
 
   // 使用 useSupabaseSubscription 订听变化
-  const { useSupabaseSubscription } = require("../hooks/useSupabase");
+
 
   useSupabaseSubscription(
     "user_settings_changes",

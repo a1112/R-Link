@@ -41,7 +41,7 @@ export class PluginsApi {
    * POST /api/plugins/{name}/start
    */
   async start(name: string, config?: Record<string, unknown>): Promise<ApiResponse> {
-    const data: PluginStartRequest = config ? { config } : undefined;
+    const data: PluginStartRequest | undefined = config ? { config } : undefined;
     return http.post<ApiResponse>(API_ENDPOINTS.plugins.start(name), data);
   }
 

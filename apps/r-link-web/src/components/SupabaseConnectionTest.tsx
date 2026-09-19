@@ -28,50 +28,16 @@ export const SupabaseConnectionTest: React.FC = () => {
     ];
 
     try {
-      // 测试 1: 基本连接
-      const { data, error } = await supabase.from("_test_connection_").select("*").limit(1);
-
-      if (error) {
-        if (error.code === "42P01") {
-          // 表不存在是正常的，说明连接成功
-          newResults[0] = {
-            name: "连接测试",
-            status: "success",
-            message: "连接成功！Supabase 客户端正常工作",
-          };
-        } else {
-          newResults[0] = {
-            name: "连接测试",
-            status: "error",
-            message: `连接错误: ${error.message}`,
-          };
-        }
-      } else {
-        newResults[0] = {
-          name: "连接测试",
-          status: "success",
-          message: "连接成功！",
-          data,
-        };
-      }
-
-      // 测试 2: 尝试获取数据库信息
-      const { data: versionData, error: versionError } = await supabase.rpc("version");
-
-      if (!versionError) {
-        newResults[1] = {
-          name: "数据库查询",
-          status: "success",
-          message: "数据库可正常查询",
-          data: versionData,
-        };
-      } else {
-        newResults[1] = {
-          name: "数据库查询",
-          status: "success",
-          message: "连接正常 (rpc 函数不存在是正常的)",
-        };
-      }
+      const { error: authError } = await supabase.auth.getSession();
+      newResults[0] = {
+        name: "连接测试", status: authError ? "error" : "success",
+        message: authError?.message || "客户端会话可用（不代表数据库已配置）",
+      };
+      const { error: queryError } = await supabase.from("profiles").select("id").limit(1);
+      newResults[1] = {
+        name: "数据库查询", status: queryError ? "error" : "success",
+        message: queryError?.message || "数据库查询成功",
+      };
 
     } catch (err: any) {
       newResults[0] = {

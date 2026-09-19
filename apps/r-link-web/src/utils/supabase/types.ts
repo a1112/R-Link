@@ -18,6 +18,7 @@ export interface Database {
       // profiles - 用户扩展表
       // ============================================
       profiles: {
+        Relationships: [];
         Row: {
           id: string
           email: string
@@ -59,6 +60,7 @@ export interface Database {
       // plugin_configs - 插件配置表
       // ============================================
       plugin_configs: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string
@@ -97,6 +99,7 @@ export interface Database {
       // plugin_market - 插件市场表
       // ============================================
       plugin_market: {
+        Relationships: [];
         Row: {
           id: string
           plugin_id: string
@@ -177,6 +180,7 @@ export interface Database {
       // plugin_reviews - 插件评论表
       // ============================================
       plugin_reviews: {
+        Relationships: [];
         Row: {
           id: string
           plugin_id: string
@@ -212,6 +216,7 @@ export interface Database {
       // user_settings - 用户设置表
       // ============================================
       user_settings: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string
@@ -262,6 +267,7 @@ export interface Database {
       // remote_connections - 远程连接表
       // ============================================
       remote_connections: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string
@@ -324,6 +330,7 @@ export interface Database {
       // connection_history - 连接历史表
       // ============================================
       connection_history: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string
@@ -362,6 +369,7 @@ export interface Database {
       // frp_configs - FRP 配置表
       // ============================================
       frp_configs: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string
@@ -403,6 +411,7 @@ export interface Database {
       // storage_mappings - 存储映射表
       // ============================================
       storage_mappings: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string
@@ -441,6 +450,7 @@ export interface Database {
       // notifications - 通知表
       // ============================================
       notifications: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string
@@ -482,6 +492,7 @@ export interface Database {
       // api_keys - API 密钥表
       // ============================================
       api_keys: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string
@@ -520,6 +531,7 @@ export interface Database {
       // files - 文件表
       // ============================================
       files: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string
@@ -558,6 +570,7 @@ export interface Database {
       // audit_logs - 审计日志表
       // ============================================
       audit_logs: {
+        Relationships: [];
         Row: {
           id: string
           user_id: string | null
@@ -596,6 +609,7 @@ export interface Database {
       // system_config - 系统配置表
       // ============================================
       system_config: {
+        Relationships: [];
         Row: {
           key: string
           value: Json
@@ -621,6 +635,7 @@ export interface Database {
     }
     Views: {
       user_stats: {
+        Relationships: [];
         Row: {
           user_id: string
           username: string | null
@@ -632,6 +647,7 @@ export interface Database {
       }
     }
     Functions: {
+      increment_plugin_downloads: { Args: { p_plugin_id: string }; Returns: undefined };
       _test_connection_: {
         Args: { row: Json }
         Returns: Json

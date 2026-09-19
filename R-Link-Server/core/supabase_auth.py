@@ -93,6 +93,7 @@ class SupabaseAuth:
                 "email": user_data.get("email"),
                 "role": user_data.get("role", "authenticated"),
                 "aud": user_data.get("aud"),
+                "app_metadata": user_data.get("app_metadata", {}),
             }
         return None
 
@@ -147,7 +148,7 @@ class SupabaseAuth:
 
         exp = payload.get("exp")
         sub = payload.get("sub")
-        if not isinstance(exp, int) or exp < int(time.time()) or not sub:
+        if type(exp) is not int or exp <= int(time.time()) or not isinstance(sub, str) or not sub:
             return None
 
         return payload
@@ -164,6 +165,8 @@ class SupabaseAuth:
         return f"{payload_b64}.{signature_b64}"
 
     def _decode_websocket_token(self, token: str) -> Optional[Dict[str, Any]]:
+        if not isinstance(token, str) or not token.isascii():
+            return None
         try:
             payload_b64, signature_b64 = token.split(".", 1)
         except ValueError:
@@ -181,7 +184,8 @@ class SupabaseAuth:
         padding = "=" * (-len(payload_b64) % 4)
         try:
             payload_bytes = base64.urlsafe_b64decode(payload_b64 + padding)
-            return json.loads(payload_bytes.decode("utf-8"))
+            payload = json.loads(payload_bytes.decode("utf-8"))
+            return payload if isinstance(payload, dict) else None
         except Exception:
             return None
 
@@ -242,6 +246,9 @@ async def require_admin(
 
     用于依赖注入，需要管理员角色
     """
-    # TODO: 从数据库获取用户角色
-    # 暂时简化处理，所有认证用户都是管理员
+    # app_metadata is managed by Supabase admins; user_metadata is user writable.
+    metadata = user.get("app_metadata") or {}
+    admin_ids = {value.strip() for value in os.getenv("R_LINK_ADMIN_USER_IDS", "").split(",") if value.strip()}
+    if not ((isinstance(metadata, dict) and metadata.get("role") == "admin") or user.get("id") in admin_ids):
+        raise HTTPException(status_code=403, detail="Administrator access required")
     return user

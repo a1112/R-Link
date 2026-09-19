@@ -10,18 +10,21 @@ import os
 import shutil
 import zipfile
 import httpx
+import tempfile
+from urllib.parse import urlsplit
+from core.plugin_packages import plugin_path, safe_extract_zip, install_zip, MAX_PACKAGE_BYTES
 from pathlib import Path
 
 from core.plugin_manager import PluginManager
 from core.plugin_interface import PluginState
-from core.supabase_auth import require_auth
+from core.supabase_auth import require_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/plugins",
     tags=["plugins"],
-    dependencies=[Depends(require_auth)],
+    dependencies=[Depends(require_admin)],
 )
 
 # 全局插件管理器实例（在 main.py 中初始化）
@@ -112,7 +115,7 @@ async def get_plugin(name: str):
     if not plugin:
         raise HTTPException(status_code=404, detail=f"Plugin {name} not found")
 
-    info = plugin.get_info()
+    info = next(info for info in plugin_manager.get_all_plugins() if info.name == name)
     return PluginInfoResponse(
         name=info.name,
         version=info.version,
@@ -272,150 +275,84 @@ async def check_plugin_health(name: str):
 
 # ========== 插件安装/卸载 ==========
 
+def _plugins_root() -> Path:
+    if not plugin_manager:
+        raise HTTPException(503, "Plugin manager not initialized")
+    return Path(plugin_manager.plugins_dir).resolve()
+
+
 @router.post("/install/upload")
 async def install_plugin_upload(file: UploadFile = File(...)):
-    """
-    通过上传插件包安装插件
-
-    支持的格式：
-    - .zip 压缩包（包含 manifest.yaml 或 manifest.json）
-    - .py 单文件插件
-    - .exe 二进制插件（需要附带 manifest.yaml）
-    """
-    if not plugin_manager:
-        raise HTTPException(status_code=500, detail="Plugin manager not initialized")
-
-    # 创建临时目录
-    temp_dir = Path("plugins/temp")
-    temp_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        # 保存上传的文件
-        file_path = temp_dir / file.filename
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-
-        # 处理不同类型的文件
-        if file.filename.endswith(".zip"):
-            # 解压 ZIP 文件
-            plugin_name = await _extract_and_install_zip(file_path, "plugins")
-        elif file.filename.endswith(".py"):
-            # 单 Python 文件插件
-            plugin_name = file_path.stem
-            plugin_dir = Path("plugins") / plugin_name
-            plugin_dir.mkdir(parents=True, exist_ok=True)
-            shutil.move(file_path, plugin_dir / "__init__.py")
-            # 创建基本 manifest
-            await _create_basic_manifest(plugin_dir, plugin_name)
+    root = _plugins_root()
+    filename = file.filename or ""
+    if "/" in filename or "\\" in filename or ":" in filename:
+        raise HTTPException(400, "Invalid upload filename")
+    suffix = Path(filename).suffix.lower()
+    if suffix not in {".zip", ".py"}:
+        raise HTTPException(400, "Supported file formats: .zip, .py")
+    with tempfile.TemporaryDirectory(prefix="rlink-upload-") as temporary:
+        path = Path(temporary) / ("package" + suffix)
+        size = 0
+        with path.open("wb") as output:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_PACKAGE_BYTES:
+                    raise HTTPException(413, "Plugin package is too large")
+                output.write(chunk)
+        if suffix == ".zip":
+            name = await _extract_and_install_zip(path, str(root))
         else:
-            raise HTTPException(
-                status_code=400,
-                detail="Unsupported file format. Please upload .zip, .py, or .exe with manifest"
-            )
-
-        # 重新加载插件
-        await _reload_plugin_manager()
-
-        return {
-            "status": "success",
-            "message": f"Plugin {plugin_name} installed successfully",
-            "plugin": plugin_name
-        }
-
-    except Exception as e:
-        logger.error(f"Plugin installation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
-        # 清理临时文件
-        if file_path.exists():
-            file_path.unlink()
+            name = Path(filename).stem
+            target = plugin_path(root, name)
+            if plugin_manager.is_builtin(name) or target.exists():
+                raise HTTPException(409, "Plugin already installed")
+            target.mkdir(parents=True)
+            shutil.move(str(path), str(target / "__init__.py"))
+            await _create_basic_manifest(target, name)
+    await _reload_plugin_manager()
+    return {"status": "success", "message": f"Plugin {name} installed successfully", "plugin": name}
 
 
 @router.post("/install/url")
 async def install_plugin_from_url(request: PluginInstallRequest):
-    """
-    从 URL 下载并安装插件
-    """
-    if not plugin_manager:
-        raise HTTPException(status_code=500, detail="Plugin manager not initialized")
-
-    if not request.url:
-        raise HTTPException(status_code=400, detail="URL is required")
-
-    temp_dir = Path("plugins/temp")
-    temp_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        # 下载文件
-        filename = request.url.split("/")[-1].split("?")[0]
-        file_path = temp_dir / filename
-
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.get(request.url)
-            response.raise_for_status()
-
-            with open(file_path, "wb") as f:
-                f.write(response.content)
-
-        # 处理下载的文件
-        if filename.endswith(".zip"):
-            plugin_name = await _extract_and_install_zip(file_path, "plugins")
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail="Unsupported file format from URL"
-            )
-
-        # 重新加载插件
-        await _reload_plugin_manager()
-
-        return {
-            "status": "success",
-            "message": f"Plugin {plugin_name} installed successfully",
-            "plugin": plugin_name
-        }
-
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=400, detail=f"Failed to download plugin: {e}")
-    except Exception as e:
-        logger.error(f"Plugin installation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    root = _plugins_root()
+    parsed = urlsplit(request.url or "")
+    if parsed.scheme not in {"https", "http"} or not parsed.hostname or not parsed.path.lower().endswith(".zip"):
+        raise HTTPException(400, "An HTTP(S) URL to a ZIP package is required")
+    with tempfile.TemporaryDirectory(prefix="rlink-download-") as temporary:
+        path = Path(temporary) / "package.zip"
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream("GET", request.url) as response:
+                    response.raise_for_status()
+                    size = 0
+                    with path.open("wb") as output:
+                        async for chunk in response.aiter_bytes():
+                            size += len(chunk)
+                            if size > MAX_PACKAGE_BYTES:
+                                raise HTTPException(413, "Plugin package is too large")
+                            output.write(chunk)
+        except httpx.HTTPError as error:
+            raise HTTPException(400, "Failed to download plugin") from error
+        name = await _extract_and_install_zip(path, str(root))
+    await _reload_plugin_manager()
+    return {"status": "success", "message": f"Plugin {name} installed successfully", "plugin": name}
 
 
 @router.delete("/uninstall")
 async def uninstall_plugin(request: PluginUninstallRequest):
-    """
-    卸载插件
-
-    注意：内置插件不能卸载
-    """
-    if not plugin_manager:
-        raise HTTPException(status_code=500, detail="Plugin manager not initialized")
-
-    # 检查是否为内置插件
+    root = _plugins_root()
+    target = plugin_path(root, request.name)
     if plugin_manager.is_builtin(request.name):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot uninstall builtin plugin: {request.name}"
-        )
-
-    # 停止插件
-    plugin_manager.stop_plugin(request.name)
-
-    # 删除插件目录
-    plugin_dir = Path("plugins") / request.name
-    if plugin_dir.exists():
-        shutil.rmtree(plugin_dir)
-
-    # 从管理器中移除
-    if request.name in plugin_manager.plugins:
-        del plugin_manager.plugins[request.name]
-
-    return {
-        "status": "success",
-        "message": f"Plugin {request.name} uninstalled successfully"
-    }
+        raise HTTPException(400, "Cannot uninstall builtin plugin")
+    if not target.is_dir():
+        raise HTTPException(404, "Plugin not found")
+    plugin = plugin_manager.get_plugin(request.name)
+    if plugin and not plugin.stop():
+        raise HTTPException(409, "Plugin could not be stopped")
+    shutil.rmtree(target)
+    plugin_manager.plugins.pop(request.name, None)
+    return {"status": "success", "message": f"Plugin {request.name} uninstalled successfully"}
 
 
 @router.post("/reload")
@@ -440,57 +377,10 @@ async def reload_plugins():
 # ========== 辅助函数 ==========
 
 async def _extract_and_install_zip(zip_path: Path, target_dir: str) -> str:
-    """解压 ZIP 文件并安装插件"""
-    temp_extract = Path(target_dir) / "temp" / "extract"
-    temp_extract.mkdir(parents=True, exist_ok=True)
-
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        _safe_extract_zip(zip_ref, temp_extract)
-
-    # 查找包含 manifest 的目录
-    manifest_path = None
-    for root, dirs, files in os.walk(temp_extract):
-        if "manifest.yaml" in files or "manifest.json" in files:
-            manifest_path = Path(root)
-            break
-
-    if not manifest_path:
-        raise HTTPException(
-            status_code=400,
-            detail="No manifest.yaml or manifest.json found in the uploaded package"
-        )
-
-    # 获取插件名称
-    plugin_name = manifest_path.name if manifest_path != temp_extract else manifest_path.parent.name
-
-    # 移动到目标目录
-    target_path = Path(target_dir) / plugin_name
-    if target_path.exists():
-        shutil.rmtree(target_path)
-
-    shutil.move(str(manifest_path), str(target_path))
-
-    # 清理临时目录
-    shutil.rmtree(temp_extract.parent)
-
-    return plugin_name
+    return install_zip(zip_path, Path(target_dir))
 
 
-def _safe_extract_zip(zip_ref: zipfile.ZipFile, destination: Path) -> None:
-    """Safely extract ZIP contents without allowing path traversal."""
-    destination = destination.resolve()
-    for member in zip_ref.infolist():
-        member_path = Path(member.filename)
-        if member_path.is_absolute() or member_path.drive:
-            raise HTTPException(status_code=400, detail="ZIP archive contains unsafe paths")
-        if any(part == ".." for part in member_path.parts):
-            raise HTTPException(status_code=400, detail="ZIP archive contains unsafe paths")
-
-        resolved_path = (destination / member_path).resolve()
-        if resolved_path != destination and destination not in resolved_path.parents:
-            raise HTTPException(status_code=400, detail="ZIP archive contains unsafe paths")
-
-    zip_ref.extractall(destination)
+_safe_extract_zip = safe_extract_zip
 
 
 async def _create_basic_manifest(plugin_dir: Path, plugin_name: str):
@@ -512,13 +402,8 @@ async def _create_basic_manifest(plugin_dir: Path, plugin_name: str):
 
 
 async def _reload_plugin_manager():
-    """重新加载插件管理器"""
-    global plugin_manager
-    # 重新初始化插件管理器
-    from core.plugin_manager import PluginManager
-    old_manager = plugin_manager
-    plugin_manager = PluginManager(plugins_dir="plugins", builtin_dir="builtin")
-    set_plugin_manager(plugin_manager)
-    # 清理旧管理器
-    if old_manager:
-        old_manager.cleanup()
+    """Reload in place so API, console and lifespan retain the same manager."""
+    if plugin_manager:
+        plugin_manager.cleanup()
+        plugin_manager.plugins.clear()
+        plugin_manager._load_plugins()

@@ -42,8 +42,10 @@ python -m pip install -r requirements-test.txt
 python -m pytest test_auth_and_plugin_security.py test_web_client_contract.py -q
 ```
 
-迁移验证：前端 12 项测试、后端 19 项测试通过，Web 生产构建通过。测试覆盖会话切换、未登录请求、令牌目标限制、SSH 票据及取消、握手拒绝和 API/插件共享连接记录；不连接真实 Supabase、SSH 主机或启动终端插件。
+当前审查结果见 [2026-09-19 审查记录](../../docs/audit-20260919.md)。构建包含严格 TypeScript 检查；浏览器代码不包含独立部署的 `src/supabase/functions` Deno 服务。
 
-构建仍有主包超过 500 kB 的提示。Tauri 配置已对齐开发端口和 `dist` 路径，但源仓库缺少配置中引用的图标文件，原生安装包未验证。部分功能页仍包含演示数据；本次迁移不表示所有远程连接产品功能已经实现。
+已补齐桌面图标并修正 Tauri 配置。原生签名安装包与真实 Supabase/SSH 联调另行验证。部分功能页仍包含演示数据。
+
+插件和本机控制台管理需要管理员权限；配置方法以及 SSH 主机密钥校验见[根目录说明](../../README.md)。插件 ZIP 的名称来自清单，已安装插件须先卸载再替换。
 
 [迁移清单与原始文件](../../docs/repository-consolidation/R-Link-Web/README.md)。旧 `.env` 未自动启用，编辑器文件仅作归档；历史文档和归档代码仅供追溯，当前配置以本文为准。

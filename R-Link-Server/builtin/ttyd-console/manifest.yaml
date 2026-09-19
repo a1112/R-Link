@@ -11,7 +11,7 @@ config:
   ttyd_path: ttyd.exe
   ttyd_port: 7681
   command: cmd.exe
-  enable_nginx_proxy: true
+  enable_nginx_proxy: false
   nginx_location: /console
 
 dependencies:

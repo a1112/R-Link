@@ -1,10 +1,10 @@
 name: Web client and API contract
 on:
   pull_request:
-    paths: ['apps/r-link-web/**', 'R-Link-Server/**', 'docs/repository-consolidation/R-Link-Web/**', 'scripts/verify_web_migration.py', '.github/workflows/web-client.yml']
+    paths: ['package.json', 'package-lock.json', 'apps/r-link-web/**', 'R-Link-Server/**', 'docs/repository-consolidation/R-Link-Web/**', 'scripts/verify_web_migration.py', '.github/workflows/web-client.yml']
   push:
     branches: [main]
-    paths: ['apps/r-link-web/**', 'R-Link-Server/**', 'docs/repository-consolidation/R-Link-Web/**', 'scripts/verify_web_migration.py', '.github/workflows/web-client.yml']
+    paths: ['package.json', 'package-lock.json', 'apps/r-link-web/**', 'R-Link-Server/**', 'docs/repository-consolidation/R-Link-Web/**', 'scripts/verify_web_migration.py', '.github/workflows/web-client.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -37,4 +37,4 @@ jobs:
       - run: python scripts/verify_web_migration.py
         working-directory: .
       - run: python -m pip install -r requirements-test.txt
-      - run: python -m pytest test_auth_and_plugin_security.py test_web_client_contract.py -q
+      - run: python -m pytest -q

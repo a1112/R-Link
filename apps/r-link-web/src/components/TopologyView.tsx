@@ -5,8 +5,8 @@ import {
   PlusCircle, Database, ChevronRight, Save, X, Cpu, Globe, Share2, Layers, Box, Router, ChevronUp, Check, Eye, EyeOff, Filter, Shield, Puzzle, MoreHorizontal, MessageSquare, Zap, Activity
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { NodeDetailModal } from "./NodeDetailModal";
-import { toast } from "sonner@2.0.3";
+import { NodeDetailModal, type TopologyNode } from "./NodeDetailModal";
+import { toast } from "sonner";
 
 // --- Mock Data for Topologies ---
 const mockTopologies = [
@@ -16,7 +16,11 @@ const mockTopologies = [
   { id: 'topo4', name: '深圳办事处', desc: '办公网络与访客Wi-Fi', nodeCount: 5, status: 'offline', region: 'Shenzhen', icon: 'wifi' },
 ];
 
-const getTopologyIcon = (iconName) => {
+type Topology = typeof mockTopologies[number];
+type NewTopology = Pick<Topology, "name" | "desc" | "icon">;
+type TopologyLink = { source: string; target: string; type: string };
+
+const getTopologyIcon = (iconName: string) => {
     switch(iconName) {
         case 'layout': return Layout;
         case 'server': return Server;
@@ -31,7 +35,7 @@ const getTopologyIcon = (iconName) => {
     }
 };
 
-const CreateTopologyModal = ({ onClose, onCreate }) => {
+const CreateTopologyModal = ({ onClose, onCreate }: { onClose: () => void; onCreate: (topology: NewTopology) => void }) => {
     const [title, setTitle] = useState("");
     const [desc, setDesc] = useState("");
     const [selectedIcon, setSelectedIcon] = useState("layout");
@@ -125,7 +129,7 @@ const CreateTopologyModal = ({ onClose, onCreate }) => {
     );
 };
 
-const mockTopologyData = {
+const mockTopologyData: Record<string, { nodes: TopologyNode[]; links: TopologyLink[] }> = {
   'topo1': {
     nodes: [
         { id: 'core-router', type: 'router', x: 400, y: 100, label: '核心路由器', status: 'active' },
@@ -169,7 +173,7 @@ const defaultLinks = [
 ];
 
 // --- Sub Component: Topology Card ---
-const TopologyCard = ({ topo, onClick }) => {
+const TopologyCard = ({ topo, onClick }: { topo: Topology; onClick: () => void }) => {
   const Icon = getTopologyIcon(topo.icon);
   return (
   <div 
@@ -206,7 +210,7 @@ const TopologyCard = ({ topo, onClick }) => {
 )};
 
 // --- Sub Component: Topology Canvas (The Actual Graph) ---
-const TopologyCanvas = ({ topology, onBack }) => {
+const TopologyCanvas = ({ topology, onBack }: { topology: Topology; onBack: () => void }) => {
     const initialData = mockTopologyData[topology.id] || { nodes: defaultNodes, links: defaultLinks };
     
     const [nodes, setNodes] = useState(initialData.nodes);
@@ -216,20 +220,20 @@ const TopologyCanvas = ({ topology, onBack }) => {
     const [scale, setScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
-    const [draggingNode, setDraggingNode] = useState(null);
+    const [draggingNode, setDraggingNode] = useState<string | null>(null);
     const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
-    const [hoveredNode, setHoveredNode] = useState(null);
-    const [detailNode, setDetailNode] = useState(null);
+    const [hoveredNode, setHoveredNode] = useState<TopologyNode | null>(null);
+    const [detailNode, setDetailNode] = useState<TopologyNode | null>(null);
     const [isEditing, setIsEditing] = useState(false);
 
     // --- View Filters ---
     const [layerMenuOpen, setLayerMenuOpen] = useState(false);
     const [selectedLayers, setSelectedLayers] = useState(['core', 'distribution', 'access']); // Default select all, exclude services
     
-    const containerRef = useRef(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     // Filter Logic
-    const getNodeLayer = (type) => {
+    const getNodeLayer = (type: string) => {
         if (['cloud', 'router'].includes(type)) return 'core';
         if (['switch'].includes(type)) return 'distribution';
         if (['auth'].includes(type)) return 'auth';
@@ -242,7 +246,7 @@ const TopologyCanvas = ({ topology, onBack }) => {
         return selectedLayers.includes(layer);
     });
 
-    const handleWheel = (e) => {
+    const handleWheel = (e: React.WheelEvent) => {
         e.preventDefault();
         const container = containerRef.current;
         if (!container) return;
@@ -263,14 +267,14 @@ const TopologyCanvas = ({ topology, onBack }) => {
         setOffset({ x: newOffsetX, y: newOffsetY });
     };
 
-    const handleMouseDown = (e) => {
+    const handleMouseDown = (e: React.MouseEvent) => {
         if (e.button === 0) {
             setIsDragging(true);
             setLastMousePos({ x: e.clientX, y: e.clientY });
         }
     };
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: React.MouseEvent) => {
         if (draggingNode) {
             const dx = (e.clientX - lastMousePos.x) / scale;
             const dy = (e.clientY - lastMousePos.y) / scale;
@@ -293,9 +297,9 @@ const TopologyCanvas = ({ topology, onBack }) => {
     const handleZoomOut = () => setScale(Math.max(0.5, scale / 1.2));
     const handleFitView = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
 
-    const getNodeCenter = (node) => ({ x: node.x + 32, y: node.y + 32 });
+    const getNodeCenter = (node: TopologyNode) => ({ x: node.x + 32, y: node.y + 32 });
 
-    const getNodeIcon = (type) => {
+    const getNodeIcon = (type: string) => {
         switch(type) {
             case 'cloud': return <Cloud size={24} className="text-blue-400" />;
             case 'router': return <Router size={24} className="text-violet-400" />;
@@ -322,7 +326,7 @@ const TopologyCanvas = ({ topology, onBack }) => {
     const cloudNode = filteredNodes.find(n => n.type === 'cloud');
     
     // Generate virtual links for services that don't have explicit links to a cloud node
-    const virtualLinks = [];
+    const virtualLinks: TopologyLink[] = [];
     if (cloudNode) {
         serviceNodes.forEach(serviceNode => {
              // Check if there is already a link
@@ -350,7 +354,7 @@ const TopologyCanvas = ({ topology, onBack }) => {
         return { left, top };
     };
 
-    const handleAddNode = (type) => {
+    const handleAddNode = (type: string) => {
         const id = `node-${Date.now()}`;
         const newNode = {
             id,
@@ -735,11 +739,11 @@ const TopologyCanvas = ({ topology, onBack }) => {
 };
 
 export function TopologyView() {
-    const [activeTopology, setActiveTopology] = useState(null);
+    const [activeTopology, setActiveTopology] = useState<Topology | null>(null);
     const [topologies, setTopologies] = useState(mockTopologies);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-    const handleCreateTopology = (newTopo) => {
+    const handleCreateTopology = (newTopo: NewTopology) => {
         const id = `topo-${Date.now()}`;
         const created = {
             id,
