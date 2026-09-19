@@ -15,26 +15,12 @@ if str(SERVER_DIR) not in sys.path:
 from api import auth as auth_api
 from api import plugins as plugins_api
 from api import ssh as ssh_api
-from core.supabase_auth import auth_manager
+from core.auth import access_manager
 from main import app
 
 
-def test_auth_routes_use_fastapi_dependency_injection() -> None:
-    auth_paths = {"/api/auth/session", "/api/auth/me", "/api/auth/logout"}
-    routes = {
-        route.path: route
-        for route in auth_api.router.routes
-        if getattr(route, "path", None) in auth_paths
-    }
-
-    assert routes.keys() == auth_paths
-    for route in routes.values():
-        assert route.dependant.dependencies, f"{route.path} should declare auth dependency"
-        assert not route.dependant.body_params, f"{route.path} should not treat user as body param"
-
-
 def test_all_management_routes_require_auth_except_public_endpoints() -> None:
-    public_paths = {"/", "/health", "/api/auth/verify", "/api/auth/refresh"}
+    public_paths = {"/", "/health"}
     # OpenAPI includes mounted routers across FastAPI versions; checking only
     # app.routes can silently skip all management endpoints with lazy routers.
     checked = 0
@@ -50,20 +36,10 @@ def test_all_management_routes_require_auth_except_public_endpoints() -> None:
     assert checked > 0
 
 
-def test_auth_route_parameters_are_declared_as_depends() -> None:
-    for endpoint in (
-        auth_api.get_session,
-        auth_api.get_current_user_info,
-        auth_api.logout,
-    ):
-        parameter = inspect.signature(endpoint).parameters["user"]
-        assert isinstance(parameter.default, Depends)
-
-
 @pytest.mark.asyncio
 async def test_issue_ssh_websocket_token_is_scoped_and_short_lived() -> None:
-    token = await auth_manager.issue_websocket_token({"id": "u1"}, scope="ssh", ttl_seconds=60)
-    claims = await auth_manager.verify_websocket_token(token, expected_scope="ssh")
+    token = await access_manager.issue_websocket_token({"id": "u1"}, scope="ssh", ttl_seconds=60)
+    claims = await access_manager.verify_websocket_token(token, expected_scope="ssh")
 
     assert claims["sub"] == "u1"
     assert claims["scope"] == "ssh"
@@ -71,9 +47,9 @@ async def test_issue_ssh_websocket_token_is_scoped_and_short_lived() -> None:
 
 @pytest.mark.asyncio
 async def test_websocket_token_verification_rejects_wrong_scope() -> None:
-    token = await auth_manager.issue_websocket_token({"id": "u1"}, scope="console", ttl_seconds=60)
+    token = await access_manager.issue_websocket_token({"id": "u1"}, scope="console", ttl_seconds=60)
 
-    claims = await auth_manager.verify_websocket_token(token, expected_scope="ssh")
+    claims = await access_manager.verify_websocket_token(token, expected_scope="ssh")
 
     assert claims is None
 
@@ -99,7 +75,7 @@ async def test_ssh_websocket_auth_rejects_plain_bearer_header() -> None:
 
 @pytest.mark.asyncio
 async def test_ssh_websocket_auth_accepts_scoped_token_from_subprotocol() -> None:
-    token = await auth_manager.issue_websocket_token({"id": "u1"}, scope="ssh", ttl_seconds=60)
+    token = await access_manager.issue_websocket_token({"id": "u1"}, scope="ssh", ttl_seconds=60)
 
     class DummyWebSocket:
         def __init__(self, scoped_token: str) -> None:

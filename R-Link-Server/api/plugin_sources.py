@@ -8,7 +8,7 @@ import logging
 import json
 from pathlib import Path
 
-from core.supabase_auth import require_admin
+from core.auth import require_admin
 from core.paths import CONFIG_DIR
 
 router = APIRouter(

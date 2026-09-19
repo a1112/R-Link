@@ -5,6 +5,22 @@
 import React, { useEffect } from "react";
 
 // ============================================
+// Supabase Hooks
+// ============================================
+
+export {
+  useAuth,
+  useRequireAuth,
+  useSupabaseQuery,
+  useSupabaseMutation,
+  useSupabaseSubscription,
+  useSupabaseRecord,
+  useSupabaseUpload,
+  useSupabasePublicUrl,
+  type UseAuthReturn,
+} from "./useSupabase";
+
+// ============================================
 // 通用 Hooks
 // ============================================
 

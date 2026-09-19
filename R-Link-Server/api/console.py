@@ -7,7 +7,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from core.supabase_auth import require_admin
+from core.auth import require_admin
 
 logger = logging.getLogger(__name__)
 

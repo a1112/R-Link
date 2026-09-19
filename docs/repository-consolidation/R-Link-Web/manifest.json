@@ -80,7 +80,9 @@
       "source_git_blob": "8a1ec093a3d6df262e2841e67bb87625ac724a34",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/SUPABASE_QUICKSTART.md",
-      "target_git_blob": "8a1ec093a3d6df262e2841e67bb87625ac724a34"
+      "target_git_blob": "8a1ec093a3d6df262e2841e67bb87625ac724a34",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/SUPABASE_QUICKSTART.md.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "SUPABASE_SETUP.md",
@@ -88,7 +90,9 @@
       "source_git_blob": "0fc4abaf7cf7ff4653947624dcb8e21f1f010563",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/SUPABASE_SETUP.md",
-      "target_git_blob": "0fc4abaf7cf7ff4653947624dcb8e21f1f010563"
+      "target_git_blob": "0fc4abaf7cf7ff4653947624dcb8e21f1f010563",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/SUPABASE_SETUP.md.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "TAURI_BUILD.md",
@@ -229,9 +233,10 @@
       "source_path": "src/STRUCTURE.md",
       "source_mode": "100644",
       "source_git_blob": "6b3cb8a6d0905e297ce414430210a19fb5d38da8",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/STRUCTURE.md",
-      "target_git_blob": "6b3cb8a6d0905e297ce414430210a19fb5d38da8"
+      "target_git_blob": "6b3cb8a6d0905e297ce414430210a19fb5d38da8",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/STRUCTURE.md.source.txt"
     },
     {
       "source_path": "src/api/README.md",
@@ -307,7 +312,8 @@
       "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/AuthPage.tsx",
       "target_git_blob": "f43458986a2a86b7e1ebce9504f4292f694fd887",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/AuthPage.tsx.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/AuthPage.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/components/DashboardView.tsx",
@@ -351,7 +357,8 @@
       "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/SupabaseConnectionTest.tsx",
       "target_git_blob": "5eeb3db4196192b01210150ab236070ea2f930ef",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/SupabaseConnectionTest.tsx.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/SupabaseConnectionTest.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/components/SupabaseExample.tsx",
@@ -360,7 +367,8 @@
       "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/SupabaseExample.tsx",
       "target_git_blob": "5ec849e5cdab882683724e28e79a39dd71fefc3e",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/SupabaseExample.tsx.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/SupabaseExample.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/components/TopologyView.tsx",
@@ -431,17 +439,19 @@
       "source_path": "src/components/layout/Header.tsx",
       "source_mode": "100644",
       "source_git_blob": "cd9bb8c59c6a2cd844edb143110eaaf5813e24b9",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/layout/Header.tsx",
-      "target_git_blob": "cd9bb8c59c6a2cd844edb143110eaaf5813e24b9"
+      "target_git_blob": "cd9bb8c59c6a2cd844edb143110eaaf5813e24b9",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/layout/Header.tsx.source.txt"
     },
     {
       "source_path": "src/components/layout/MainLayout.tsx",
       "source_mode": "100644",
       "source_git_blob": "2cdee190ac9a4df6b3a6bc436b1a0ae4238762af",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/layout/MainLayout.tsx",
-      "target_git_blob": "2cdee190ac9a4df6b3a6bc436b1a0ae4238762af"
+      "target_git_blob": "2cdee190ac9a4df6b3a6bc436b1a0ae4238762af",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/layout/MainLayout.tsx.source.txt"
     },
     {
       "source_path": "src/components/layout/Sidebar.tsx",
@@ -456,9 +466,10 @@
       "source_path": "src/components/layout/TitleBar.tsx",
       "source_mode": "100644",
       "source_git_blob": "c4c610760c5a5b3aad5e94c12bae96d3a2316d5c",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/layout/TitleBar.tsx",
-      "target_git_blob": "c4c610760c5a5b3aad5e94c12bae96d3a2316d5c"
+      "target_git_blob": "c4c610760c5a5b3aad5e94c12bae96d3a2316d5c",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/layout/TitleBar.tsx.source.txt"
     },
     {
       "source_path": "src/components/layout/index.ts",
@@ -472,17 +483,19 @@
       "source_path": "src/components/modals/SettingsModal.tsx",
       "source_mode": "100644",
       "source_git_blob": "e4696006a5ef810f8689c1365a0ea1ea4fe0c608",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/modals/SettingsModal.tsx",
-      "target_git_blob": "e4696006a5ef810f8689c1365a0ea1ea4fe0c608"
+      "target_git_blob": "e4696006a5ef810f8689c1365a0ea1ea4fe0c608",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/modals/SettingsModal.tsx.source.txt"
     },
     {
       "source_path": "src/components/modals/TermsModal.tsx",
       "source_mode": "100644",
       "source_git_blob": "5141fb3a5cd38e698b3751d53901d78f706005ab",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/modals/TermsModal.tsx",
-      "target_git_blob": "5141fb3a5cd38e698b3751d53901d78f706005ab"
+      "target_git_blob": "5141fb3a5cd38e698b3751d53901d78f706005ab",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/modals/TermsModal.tsx.source.txt"
     },
     {
       "source_path": "src/components/modals/UserMenu.tsx",
@@ -490,15 +503,18 @@
       "source_git_blob": "a5ade6450ad510b949e7fed96d8f161fb293ddde",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/src/components/modals/UserMenu.tsx",
-      "target_git_blob": "a5ade6450ad510b949e7fed96d8f161fb293ddde"
+      "target_git_blob": "a5ade6450ad510b949e7fed96d8f161fb293ddde",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/modals/UserMenu.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/components/modals/index.ts",
       "source_mode": "100644",
       "source_git_blob": "3c9967a56bef537fc3e2518b1f4f32c4ce7cc205",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/modals/index.ts",
-      "target_git_blob": "3c9967a56bef537fc3e2518b1f4f32c4ce7cc205"
+      "target_git_blob": "3c9967a56bef537fc3e2518b1f4f32c4ce7cc205",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/modals/index.ts.source.txt"
     },
     {
       "source_path": "src/components/pages/AuthScreen.tsx",
@@ -506,7 +522,9 @@
       "source_git_blob": "10d49082d218039215add69b5f116b592f325609",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/src/components/pages/AuthScreen.tsx",
-      "target_git_blob": "10d49082d218039215add69b5f116b592f325609"
+      "target_git_blob": "10d49082d218039215add69b5f116b592f325609",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/pages/AuthScreen.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/components/pages/ConsoleView.tsx",
@@ -547,7 +565,9 @@
       "source_git_blob": "7e29399e41c326809ede0dab9d1bd077e95b1caf",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/src/components/pages/ProfileView.tsx",
-      "target_git_blob": "7e29399e41c326809ede0dab9d1bd077e95b1caf"
+      "target_git_blob": "7e29399e41c326809ede0dab9d1bd077e95b1caf",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/pages/ProfileView.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/components/pages/RemoteView.tsx",
@@ -578,9 +598,10 @@
       "source_path": "src/components/pages/index.ts",
       "source_mode": "100644",
       "source_git_blob": "7327ee9868f95f5a1a9e2b8fc11c146e34a03ccd",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/pages/index.ts",
-      "target_git_blob": "7327ee9868f95f5a1a9e2b8fc11c146e34a03ccd"
+      "target_git_blob": "7327ee9868f95f5a1a9e2b8fc11c146e34a03ccd",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/pages/index.ts.source.txt"
     },
     {
       "source_path": "src/components/terminal/Terminal.css",
@@ -1077,9 +1098,10 @@
       "source_path": "src/hooks/index.ts",
       "source_mode": "100644",
       "source_git_blob": "8cd40fb0b1409f5484f251efef2a330aaa61910e",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/hooks/index.ts",
-      "target_git_blob": "8cd40fb0b1409f5484f251efef2a330aaa61910e"
+      "target_git_blob": "8cd40fb0b1409f5484f251efef2a330aaa61910e",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/hooks/index.ts.source.txt"
     },
     {
       "source_path": "src/hooks/useSupabase.tsx",
@@ -1088,7 +1110,8 @@
       "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/hooks/useSupabase.tsx",
       "target_git_blob": "0faed90188506ec9378625b86c22c2c41f4db71e",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/hooks/useSupabase.tsx.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/hooks/useSupabase.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/main.tsx",
@@ -1121,7 +1144,9 @@
       "source_git_blob": "bd6af966c4d2884ee7dc3102460b387db9fe5b6e",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/src/supabase/functions/server/index.tsx",
-      "target_git_blob": "bd6af966c4d2884ee7dc3102460b387db9fe5b6e"
+      "target_git_blob": "bd6af966c4d2884ee7dc3102460b387db9fe5b6e",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/supabase/functions/server/index.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/supabase/functions/server/kv_store.tsx",
@@ -1129,7 +1154,9 @@
       "source_git_blob": "67b0b90ac2385ac8606ab61c8223cbeebf62e945",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/src/supabase/functions/server/kv_store.tsx",
-      "target_git_blob": "67b0b90ac2385ac8606ab61c8223cbeebf62e945"
+      "target_git_blob": "67b0b90ac2385ac8606ab61c8223cbeebf62e945",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/supabase/functions/server/kv_store.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/utils/index.ts",
@@ -1147,7 +1174,8 @@
       "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/utils/supabase/auth.ts",
       "target_git_blob": "2c18d328ff25dfad48dc663a50e71b297d09ef23",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/auth.ts.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/auth.ts.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/utils/supabase/client.ts",
@@ -1156,7 +1184,8 @@
       "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/utils/supabase/client.ts",
       "target_git_blob": "c3a7f8ce4062782ee665bb27048242717cc12663",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/client.ts.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/client.ts.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/utils/supabase/database.ts",
@@ -1165,7 +1194,8 @@
       "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/utils/supabase/database.ts",
       "target_git_blob": "83b17564fac11c20dfc682435a864216667acc8d",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/database.ts.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/database.ts.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/utils/supabase/info.tsx",
@@ -1173,7 +1203,9 @@
       "source_git_blob": "0d312eb0c5f0aea63ec5f67afbaf7cbd536aa6e1",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/src/utils/supabase/info.tsx",
-      "target_git_blob": "0d312eb0c5f0aea63ec5f67afbaf7cbd536aa6e1"
+      "target_git_blob": "0d312eb0c5f0aea63ec5f67afbaf7cbd536aa6e1",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/info.tsx.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/utils/supabase/types.ts",
@@ -1182,7 +1214,8 @@
       "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/utils/supabase/types.ts",
       "target_git_blob": "1feaf8665fe9eb978abe509c2cf4ed78d11d5269",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/types.ts.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/types.ts.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "src/utils/tauriWindow.ts",
@@ -1198,7 +1231,9 @@
       "source_git_blob": "c6a75263bdc8ab68bb5443e4dcd4edcf2a0ce1cf",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/supabase/README.md",
-      "target_git_blob": "c6a75263bdc8ab68bb5443e4dcd4edcf2a0ce1cf"
+      "target_git_blob": "c6a75263bdc8ab68bb5443e4dcd4edcf2a0ce1cf",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/supabase/README.md.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "supabase/migrations/001_initial_tables.sql",
@@ -1206,7 +1241,9 @@
       "source_git_blob": "517ff6f10c53af3a1d35baaaed84c01b7a89f742",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/supabase/migrations/001_initial_tables.sql",
-      "target_git_blob": "517ff6f10c53af3a1d35baaaed84c01b7a89f742"
+      "target_git_blob": "517ff6f10c53af3a1d35baaaed84c01b7a89f742",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/supabase/migrations/001_initial_tables.sql.source.txt",
+      "retired_reason": "Cloud account and database features removed on 2026-09-19"
     },
     {
       "source_path": "tsconfig.json",
