@@ -7,7 +7,8 @@
     {
       "source_path": "src-tauri/Cargo.lock",
       "source_git_blob": "8c82c5eed975913a14fd981bdec908b3011e7ef3",
-      "target_path": "apps/r-link-web/src-tauri/Cargo.lock"
+      "target_path": "apps/r-link-web/src-tauri/Cargo.lock",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/followup-originals/src-tauri/Cargo.lock.source.txt"
     },
     {
       "source_path": "src-tauri/Cargo.toml",

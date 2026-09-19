@@ -2,10 +2,10 @@ import { sshSocketUrl } from '../../api/ssh-socket';
 /**
  * SSH 终端页面
  *
- * 提供管理 SSH 连接和 Web 终端功能
+ * 提供管理当前页面的 SSH 连接（凭据不保存到磁盘）和 Web 终端功能
  */
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Terminal as TerminalIcon,
   Plus,
@@ -39,32 +39,6 @@ interface SSHConnection {
   lastConnected?: string;
 }
 
-// 模拟保存的连接
-const mockConnections: SSHConnection[] = [
-  {
-    id: 'conn-001',
-    name: '生产服务器',
-    host: '192.168.1.100',
-    port: 22,
-    username: 'root',
-    group: '生产环境',
-    tags: ['linux', 'production'],
-    createdAt: '2026-01-10',
-    lastConnected: '2026-01-20',
-  },
-  {
-    id: 'conn-002',
-    name: '开发服务器',
-    host: 'localhost',
-    port: 2222,
-    username: 'dev',
-    group: '开发环境',
-    tags: ['local', 'development'],
-    createdAt: '2026-01-08',
-    lastConnected: '2026-01-19',
-  },
-];
-
 type ViewMode = 'list' | 'terminal';
 
 interface ConnectionForm {
@@ -89,15 +63,26 @@ const emptyForm: ConnectionForm = {
   group: '',
 };
 
-export const SSHView: React.FC = () => {
+export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; host: string; port: number; username: string } | null }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [connections, setConnections] = useState<SSHConnection[]>(mockConnections);
+  const [connections, setConnections] = useState<SSHConnection[]>([]);
   const [selectedConnection, setSelectedConnection] = useState<SSHConnection | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingConnection, setEditingConnection] = useState<SSHConnection | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<ConnectionForm>(emptyForm);
   const [showKeyInput, setShowKeyInput] = useState(false);
+
+  useEffect(() => {
+    if (initialTarget) {
+      setViewMode('list');
+      setSelectedConnection(null);
+      setEditingConnection(null);
+      setShowKeyInput(false);
+      setFormData({ ...emptyForm, ...initialTarget });
+      setShowForm(true);
+    }
+  }, [initialTarget]);
 
   // 获取 WebSocket URL
   const getWsUrl = useCallback((conn: SSHConnection) => {
@@ -184,6 +169,14 @@ export const SSHView: React.FC = () => {
       return;
     }
 
+    if (!Number.isInteger(formData.port) || formData.port < 1 || formData.port > 65535) {
+      toast.error('端口必须在 1–65535 之间');
+      return;
+    }
+    if (showKeyInput ? !formData.privateKey.trim() : !formData.password) {
+      toast.error('请输入密码或私钥');
+      return;
+    }
     if (editingConnection) {
       // 更新现有连接
       setConnections(connections.map(conn =>
@@ -284,7 +277,7 @@ export const SSHView: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-[var(--c-100)] tracking-tight">SSH 终端</h2>
-          <p className="text-[var(--c-500)] text-sm">管理 SSH 连接并在浏览器中使用终端</p>
+          <p className="text-[var(--c-500)] text-sm">管理当前页面的 SSH 连接（凭据不保存到磁盘）并在浏览器中使用终端</p>
         </div>
         <div className="flex items-center gap-2">
           <button

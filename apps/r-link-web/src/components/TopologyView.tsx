@@ -738,7 +738,7 @@ const TopologyCanvas = ({ topology, onBack }: { topology: Topology; onBack: () =
     );
 };
 
-export function TopologyView() {
+function TopologyDemo() {
     const [activeTopology, setActiveTopology] = useState<Topology | null>(null);
     const [topologies, setTopologies] = useState(mockTopologies);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -797,3 +797,4 @@ export function TopologyView() {
         </div>
     );
 }
+export function TopologyView() { return <div className="h-full flex flex-col"><p className="text-xs text-amber-400 mb-3">拓扑演示：节点、连线和状态为示例，不表示真实网络。真实设备请在设备管理中登记和检测。</p><div className="flex-1 min-h-0"><TopologyDemo /></div></div>; }

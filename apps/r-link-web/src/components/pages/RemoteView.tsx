@@ -1,87 +1,74 @@
-/**
- * 远程设备管理页面组件
- */
+import { useEffect, useState } from 'react';
+import { devicesApi, type Device, type DeviceInput } from '../../api/devices';
 
-import React from "react";
-import { Plus, Monitor, Server, Terminal } from "lucide-react";
-import { toast } from "sonner";
-import { devices } from "@/constants/mockData";
-import { StatusBadge } from "../common";
-
-export const RemoteView: React.FC = () => {
-  const handleConnect = (name: string, type: string) => {
-    toast(`正在连接到 ${name}...`, {
-      description: `正在建立安全 ${type} 会话连接`,
-    });
+const empty: DeviceInput = { name: '', host: '', port: 22, username: '' };
+const inputStyle = 'w-full rounded border border-[var(--c-700)] bg-[var(--c-950)] p-2';
+export function RemoteView({ onSsh }: { onSsh?: (device: Device) => void }) {
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState<DeviceInput | null>(null);
+  const [editing, setEditing] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState<string>();
+  useEffect(() => {
+    const controller = new AbortController();
+    void devicesApi.list(controller.signal).then(setDevices).catch(e => {
+      if (!controller.signal.aborted) setError(String(e));
+    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, []);
+  const perform = async (operation: () => Promise<void>) => {
+    setBusy(true); setError('');
+    try { await operation(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
   };
-
-  const getDeviceIcon = (type: string) => {
-    return type === 'desktop' || type === 'laptop' ? Monitor : Server;
-  };
-
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-[var(--c-100)] tracking-tight">远程设备</h2>
-          <p className="text-[var(--c-500)] text-sm">管理远程连接与终端节点</p>
-        </div>
-        <button className="bg-[var(--c-100)] hover:bg-[var(--c-white)] text-[var(--c-900)] px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
-          <Plus size={16} /> 添加设备
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {devices.map((device) => {
-          const Icon = getDeviceIcon(device.type);
-          return (
-            <div key={device.id} className="group bg-[var(--c-900)] border border-[var(--c-800)] rounded-xl p-5 hover:border-[var(--c-700)] transition-all duration-200">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[var(--c-800)] rounded-lg flex items-center justify-center text-[var(--c-400)]">
-                    <Icon size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-[var(--c-100)]">{device.name}</h3>
-                    <p className="text-xs text-[var(--c-500)]">{device.os}</p>
-                  </div>
-                </div>
-                <StatusBadge status={device.status === 'online' ? 'online' : 'offline'} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 mb-6 text-xs">
-                <div className="bg-[var(--c-950-50)] p-2 rounded border border-[var(--c-800-50)]">
-                  <span className="text-[var(--c-500)] block mb-1">IP 地址</span>
-                  <span className="font-mono text-[var(--c-300)]">{device.ip}</span>
-                </div>
-                <div className="bg-[var(--c-950-50)] p-2 rounded border border-[var(--c-800-50)]">
-                  <span className="text-[var(--c-500)] block mb-1">资源占用</span>
-                  <span className="font-mono text-[var(--c-300)]">{device.cpu}% CPU</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleConnect(device.name, 'Desktop')}
-                  disabled={device.status === 'offline'}
-                  className="flex-1 bg-[var(--c-800)] hover:bg-[var(--c-700)] text-[var(--c-200)] disabled:opacity-50 disabled:cursor-not-allowed py-2 rounded-lg text-sm font-medium transition-colors border border-[var(--c-700)] hover:border-[var(--c-600)]"
-                >
-                  远程桌面
-                </button>
-                <button
-                  onClick={() => handleConnect(device.name, 'SSH')}
-                  disabled={device.status === 'offline'}
-                  className="px-4 bg-[var(--c-900)] hover:bg-[var(--c-800)] text-[var(--c-400)] hover:text-[var(--c-200)] border border-[var(--c-800)] hover:border-[var(--c-700)] rounded-lg transition-colors"
-                >
-                  <Terminal size={16} />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+  return <div className="h-full overflow-auto space-y-5 pb-6">
+    <div className="flex justify-between gap-4">
+      <div><h2 className="text-xl font-bold">设备管理</h2><p className="text-sm text-[var(--c-400)]">登记设备并从服务端检测指定 TCP 端口。检测结果不代表设备所有服务正常。</p></div>
+      <button disabled={busy || loading} onClick={() => void perform(async () => { setDevices(await devicesApi.list()); })} className="rounded border px-3">刷新列表</button>
+      <button disabled={busy || loading} onClick={() => { setEditing(undefined); setForm({ ...empty }); }} className="shrink-0 rounded border px-3">添加设备</button>
     </div>
-  );
-};
-
+    {error && <p role="alert" className="text-red-400">{error}</p>}
+    {loading && <p>正在读取设备…</p>}
+    {!loading && devices.length === 0 && !error && <p className="text-[var(--c-400)]">尚未登记设备。添加主机名或 IP 地址后可检测连通性。</p>}
+    {form && <form className="p-4 rounded-xl border border-[var(--c-700)] space-y-3" onSubmit={event => {
+      event.preventDefault();
+      void perform(async () => {
+        const saved = await devicesApi.save(form, editing);
+        setDevices(previous => [...previous.filter(item => item.id !== saved.id), saved]);
+        setForm(null);
+      });
+    }}>
+      <h3>{editing ? '编辑设备' : '添加设备'}</h3>
+      <div className="grid md:grid-cols-2 gap-3">
+        <label>设备名称<input className={inputStyle} required maxLength={80} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
+        <label>主机名或 IP<input className={inputStyle} required maxLength={253} value={form.host} onChange={e => setForm({ ...form, host: e.target.value })} /></label>
+        <label>TCP / SSH 端口<input className={inputStyle} required type="number" min={1} max={65535} value={form.port} onChange={e => setForm({ ...form, port: Number(e.target.value) })} /></label>
+        <label>SSH 用户名（可选）<input className={inputStyle} maxLength={80} value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} /></label>
+      </div>
+      <p className="text-xs text-[var(--c-500)]">仅保存设备地址和用户名；连接时再提供密码或私钥。</p>
+      <button disabled={busy} type="submit" className="rounded border px-3 py-2 mr-3">保存设备</button>
+      <button disabled={busy} type="button" onClick={() => setForm(null)}>取消</button>
+    </form>}
+    <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{devices.map(device => <article key={device.id} className="rounded-xl p-4 border border-[var(--c-800)] bg-[var(--c-900)] space-y-3">
+      <h3 className="font-semibold">{device.name}</h3>
+      <p className="font-mono text-sm break-all">{device.host.includes(':') ? `[${device.host}]` : device.host}:{device.port}</p>
+      <p className={device.status === 'reachable' ? 'text-emerald-400' : 'text-[var(--c-400)]'}>{device.status === 'unchecked' ? '尚未检测' : device.status === 'reachable' ? `上次检测：端口可达 · ${device.latency_ms} ms` : '上次检测：端口不可达'}</p>
+      {device.checked_at && <p className="text-xs text-[var(--c-500)]">检测时间：{new Date(device.checked_at).toLocaleString()}</p>}
+      <div className="flex flex-wrap gap-3 text-sm">
+        <button disabled={busy} onClick={() => void perform(async () => {
+          const checked = await devicesApi.probe(device.id);
+          setDevices(previous => previous.map(item => item.id === checked.id ? checked : item));
+        })}>检测端口</button>
+        <button disabled={busy || !onSsh} onClick={() => onSsh?.(device)}>SSH 连接</button>
+        <button disabled={busy} onClick={() => { setEditing(device.id); setForm({ name: device.name, host: device.host, port: device.port, username: device.username }); }}>编辑</button>
+        <button disabled={busy} onClick={() => setDeleting(device.id)}>删除</button>
+      </div>
+      {deleting === device.id && <div className="text-sm space-x-3"><span>确认删除此设备？</span><button disabled={busy} onClick={() => void perform(async () => {
+        await devicesApi.remove(device.id); setDevices(previous => previous.filter(item => item.id !== device.id)); setDeleting(undefined);
+      })}>确认删除</button><button onClick={() => setDeleting(undefined)}>取消</button></div>}
+    </article>)}</div>
+  </div>;
+}
 export default RemoteView;

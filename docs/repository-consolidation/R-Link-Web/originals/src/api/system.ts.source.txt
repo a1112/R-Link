@@ -20,43 +20,43 @@ export class SystemApi {
    * 获取系统信息
    * GET /api/system/info
    */
-  async getInfo(signal?: AbortSignal): Promise<SystemInfo> {
-    return http.get<SystemInfo>(API_ENDPOINTS.system.info, { signal });
+  async getInfo(): Promise<SystemInfo> {
+    return http.get<SystemInfo>(API_ENDPOINTS.system.info);
   }
 
   /**
    * 获取系统资源使用情况
    * GET /api/system/resources
    */
-  async getResources(signal?: AbortSignal): Promise<SystemResources> {
-    return http.get<SystemResources>(API_ENDPOINTS.system.resources, { signal });
+  async getResources(): Promise<SystemResources> {
+    return http.get<SystemResources>(API_ENDPOINTS.system.resources);
   }
 
   /**
    * 获取系统进程列表
    * GET /api/system/processes
    */
-  async getProcesses(signal?: AbortSignal): Promise<ProcessInfo[]> {
-    return http.get<ProcessInfo[]>(API_ENDPOINTS.system.processes, { signal });
+  async getProcesses(): Promise<ProcessInfo[]> {
+    return http.get<ProcessInfo[]>(API_ENDPOINTS.system.processes);
   }
 
   /**
    * 获取系统运行时间
    * GET /api/system/uptime
    */
-  async getUptime(signal?: AbortSignal): Promise<SystemUptime> {
-    return http.get<SystemUptime>(API_ENDPOINTS.system.uptime, { signal });
+  async getUptime(): Promise<SystemUptime> {
+    return http.get<SystemUptime>(API_ENDPOINTS.system.uptime);
   }
 
   /**
    * 获取系统概览（组合方法）
    * 同时获取系统信息和资源使用情况
    */
-  async getOverview(signal?: AbortSignal): Promise<SystemInfo & { resources: SystemResources; uptime: SystemUptime }> {
+  async getOverview(): Promise<SystemInfo & { resources: SystemResources; uptime: SystemUptime }> {
     const [info, resources, uptime] = await Promise.all([
-      this.getInfo(signal),
-      this.getResources(signal),
-      this.getUptime(signal),
+      this.getInfo(),
+      this.getResources(),
+      this.getUptime(),
     ]);
 
     return {

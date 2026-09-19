@@ -43,3 +43,5 @@ __pycache__/
 .repository-consolidation-local/
 logs/
 R-Link-Server/config/plugin_sources.json
+
+R-Link-Server/config/devices.sqlite3*
