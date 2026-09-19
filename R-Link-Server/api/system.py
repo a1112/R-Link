@@ -4,6 +4,8 @@
 from fastapi import APIRouter, Depends
 import psutil
 import platform
+import socket
+import time
 from datetime import datetime
 from typing import Dict, Any
 import os
@@ -109,3 +111,21 @@ def _format_uptime(seconds: float) -> str:
         return f"{hours}h {minutes}m"
     else:
         return f"{minutes}m"
+
+
+@router.get("/network")
+def get_network():
+    """Interface counters on the managed server, never invented device/tunnel totals."""
+    counters = psutil.net_io_counters(pernic=True)
+    stats = psutil.net_if_stats()
+    addresses = psutil.net_if_addrs()
+    return {
+        "hostname": platform.node(), "sampled_at": time.time(), "boot_time": psutil.boot_time(),
+        "interfaces": [
+            {"name": name, "is_up": stats[name].isup if name in stats else False,
+             "addresses": [address.address for address in addresses.get(name, [])
+                           if address.family in (socket.AF_INET, socket.AF_INET6)],
+             "bytes_sent": counter.bytes_sent, "bytes_recv": counter.bytes_recv}
+            for name, counter in counters.items()
+        ]
+    }

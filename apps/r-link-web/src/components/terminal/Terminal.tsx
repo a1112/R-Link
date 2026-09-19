@@ -84,6 +84,9 @@ export const WebTerminal: React.FC<TerminalProps> = ({
   const socketAttemptRef = useRef<AbortController | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const callbacks = useRef({ onConnected, onClosed, onError });
+  callbacks.current = { onConnected, onClosed, onError };
+
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [error, setError] = useState<string | null>(null);
 
@@ -226,7 +229,7 @@ export const WebTerminal: React.FC<TerminalProps> = ({
           switch (message.type) {
             case 'connected':
               setConnectionState('connected');
-              onConnected?.();
+              callbacks.current.onConnected?.();
               if (terminalInstanceRef.current) {
                 terminalInstanceRef.current.writeln(`\r\n\x1b[1;32m✔ Connected to ${message.username}@${message.host}:${message.port}\x1b[0m\r\n`);
               }
@@ -241,7 +244,7 @@ export const WebTerminal: React.FC<TerminalProps> = ({
             case 'error':
               setConnectionState('error');
               setError(message.message || 'Connection error');
-              onError?.(message.message || 'Connection error');
+              callbacks.current.onError?.(message.message || 'Connection error');
               if (terminalInstanceRef.current) {
                 terminalInstanceRef.current.writeln(`\r\n\x1b[1;31m✖ Error: ${message.message}\x1b[0m\r\n`);
               }
@@ -249,7 +252,7 @@ export const WebTerminal: React.FC<TerminalProps> = ({
 
             case 'closed':
               setConnectionState('disconnected');
-              onClosed?.();
+              callbacks.current.onClosed?.();
               if (terminalInstanceRef.current) {
                 terminalInstanceRef.current.writeln('\r\n\x1b[1;33m⚠ Connection closed\x1b[0m\r\n');
               }
@@ -268,13 +271,13 @@ export const WebTerminal: React.FC<TerminalProps> = ({
         if (wsRef.current !== ws || attempt.signal.aborted) return;
         setConnectionState('error');
         setError('WebSocket error');
-        onError?.('WebSocket error');
+        callbacks.current.onError?.('WebSocket error');
       };
 
       ws.onclose = (event) => {
         if (wsRef.current !== ws || attempt.signal.aborted) return;
         setConnectionState('disconnected');
-        onClosed?.(event.reason);
+        callbacks.current.onClosed?.(event.reason);
         if (wsRef.current === ws) { wsRef.current = null; socketAttemptRef.current = null; }
       };
 
@@ -283,12 +286,16 @@ export const WebTerminal: React.FC<TerminalProps> = ({
       socketAttemptRef.current = null;
       setConnectionState('error');
       setError(String(e));
-      onError?.(String(e));
+      callbacks.current.onError?.(String(e));
     }
-  }, [wsUrl, host, port, username, password, privateKey, passphrase, onConnected, onClosed, onError]);
+  }, [wsUrl, host, port, username, password, privateKey, passphrase]);
 
   // 断开连接
   const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
     socketAttemptRef.current?.abort();
     socketAttemptRef.current = null;
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -331,13 +338,15 @@ export const WebTerminal: React.FC<TerminalProps> = ({
   // 窗口大小变化时调整终端尺寸
   useEffect(() => {
     const handleResize = () => {
-      if (fitAddonRef.current) {
+      if (fitAddonRef.current && terminalRef.current?.clientWidth && terminalRef.current?.clientHeight) {
         fitAddonRef.current.fit();
       }
     };
 
+    const observer = new ResizeObserver(handleResize);
+    if (terminalRef.current) observer.observe(terminalRef.current);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => { observer.disconnect(); window.removeEventListener('resize', handleResize); };
   }, []);
 
   // 手动连接

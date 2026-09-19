@@ -268,9 +268,10 @@
       "source_path": "src/api/hooks.ts",
       "source_mode": "100644",
       "source_git_blob": "03abe1703a6532f6a0956d95efee839eddc17040",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/api/hooks.ts",
-      "target_git_blob": "03abe1703a6532f6a0956d95efee839eddc17040"
+      "target_git_blob": "03abe1703a6532f6a0956d95efee839eddc17040",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/api/hooks.ts.source.txt"
     },
     {
       "source_path": "src/api/index.ts",
@@ -293,9 +294,10 @@
       "source_path": "src/api/system.ts",
       "source_mode": "100644",
       "source_git_blob": "39a9238b826cbbc453522a378ecc1a94e678ef54",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/api/system.ts",
-      "target_git_blob": "39a9238b826cbbc453522a378ecc1a94e678ef54"
+      "target_git_blob": "39a9238b826cbbc453522a378ecc1a94e678ef54",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/api/system.ts.source.txt"
     },
     {
       "source_path": "src/api/types.ts",
@@ -319,9 +321,10 @@
       "source_path": "src/components/DashboardView.tsx",
       "source_mode": "100644",
       "source_git_blob": "52e78d52f1df5daff978abd9cc44bc2d69421883",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/DashboardView.tsx",
-      "target_git_blob": "52e78d52f1df5daff978abd9cc44bc2d69421883"
+      "target_git_blob": "52e78d52f1df5daff978abd9cc44bc2d69421883",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/DashboardView.tsx.source.txt"
     },
     {
       "source_path": "src/components/NodeDetailModal.tsx",
@@ -573,9 +576,10 @@
       "source_path": "src/components/pages/RemoteView.tsx",
       "source_mode": "100644",
       "source_git_blob": "4c5a203546fcd0bd1e5da120788032620aae7e5c",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/pages/RemoteView.tsx",
-      "target_git_blob": "4c5a203546fcd0bd1e5da120788032620aae7e5c"
+      "target_git_blob": "4c5a203546fcd0bd1e5da120788032620aae7e5c",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/pages/RemoteView.tsx.source.txt"
     },
     {
       "source_path": "src/components/pages/SSHView.tsx",

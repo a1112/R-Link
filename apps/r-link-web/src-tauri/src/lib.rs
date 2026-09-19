@@ -6,10 +6,24 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default().plugin(project_window_chrome::init())
+    let builder = tauri::Builder::default();
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _, _| {
+        desktop_tray::show_main(app);
+    }));
+    #[cfg(desktop)]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        project_resource_monitor::project_resource_snapshot,
+        desktop_tray::desktop_preferences,
+        desktop_tray::set_close_to_tray,
+    ]);
+    #[cfg(mobile)]
+    let builder = builder.invoke_handler(tauri::generate_handler![project_resource_monitor::project_resource_snapshot]);
+    builder.plugin(project_window_chrome::init())
         .plugin(project_resource_monitor::init())
-        .invoke_handler(tauri::generate_handler![project_resource_monitor::project_resource_snapshot])
         .setup(|app| {
+            #[cfg(desktop)]
+            desktop_tray::setup(app)?;
             #[cfg(not(mobile))]
             {
                 if let Some(window) = app.get_webview_window("main") {
@@ -31,3 +45,6 @@ pub fn run() {
 mod project_resource_monitor;
 
 mod project_window_chrome;
+
+#[cfg(desktop)]
+mod desktop_tray;

@@ -24,16 +24,16 @@ export class PluginsApi {
    * 获取所有插件列表
    * GET /api/plugins/
    */
-  async list(): Promise<PluginInfo[]> {
-    return http.get<PluginInfo[]>(API_ENDPOINTS.plugins.list);
+  async list(signal?: AbortSignal): Promise<PluginInfo[]> {
+    return http.get<PluginInfo[]>(API_ENDPOINTS.plugins.list, { signal });
   }
 
   /**
    * 获取指定插件信息
    * GET /api/plugins/{name}
    */
-  async get(name: string): Promise<PluginInfo> {
-    return http.get<PluginInfo>(API_ENDPOINTS.plugins.detail(name));
+  async get(name: string, signal?: AbortSignal): Promise<PluginInfo> {
+    return http.get<PluginInfo>(API_ENDPOINTS.plugins.detail(name), { signal });
   }
 
   /**
@@ -65,16 +65,16 @@ export class PluginsApi {
    * 获取插件状态
    * GET /api/plugins/{name}/status
    */
-  async getStatus(name: string): Promise<PluginStatus> {
-    return http.get<PluginStatus>(API_ENDPOINTS.plugins.status(name));
+  async getStatus(name: string, signal?: AbortSignal): Promise<PluginStatus> {
+    return http.get<PluginStatus>(API_ENDPOINTS.plugins.status(name), { signal });
   }
 
   /**
    * 获取所有插件状态
    * GET /api/plugins/status/all
    */
-  async getAllStatus(): Promise<AllPluginStatusResponse> {
-    return http.get<AllPluginStatusResponse>(API_ENDPOINTS.plugins.statusAll);
+  async getAllStatus(signal?: AbortSignal): Promise<AllPluginStatusResponse> {
+    return http.get<AllPluginStatusResponse>(API_ENDPOINTS.plugins.statusAll, { signal });
   }
 
   /**
@@ -114,10 +114,10 @@ export class PluginsApi {
    * 获取插件列表及状态（组合方法）
    * 同时获取插件列表和状态信息
    */
-  async listWithStatus(): Promise<Array<PluginInfo & { status: PluginStatus }>> {
+  async listWithStatus(signal?: AbortSignal): Promise<Array<PluginInfo & { status: PluginStatus }>> {
     const [plugins, allStatus] = await Promise.all([
-      this.list(),
-      this.getAllStatus(),
+      this.list(signal),
+      this.getAllStatus(signal),
     ]);
 
     return plugins.map((plugin) => ({

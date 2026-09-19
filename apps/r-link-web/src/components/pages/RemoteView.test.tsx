@@ -1,0 +1,36 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { devicesApi } from '../../api/devices';
+import { RemoteView } from './RemoteView';
+vi.mock('../../api/devices', () => ({ devicesApi: { list: vi.fn(), save: vi.fn(), probe: vi.fn(), remove: vi.fn() } }));
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
+const device = { id: 'one', name: 'NAS', host: '192.0.2.1', port: 22, username: 'admin', revision: 1, status: 'unchecked' as const, checked_at: null, latency_ms: null };
+it('adds a persisted device, shows measured status, passes SSH target and confirms deletion', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValue([]);
+  vi.mocked(devicesApi.save).mockResolvedValue(device);
+  vi.mocked(devicesApi.probe).mockResolvedValue({ ...device, status: 'reachable', checked_at: '2026-09-19T00:00:00Z', latency_ms: 12 });
+  vi.mocked(devicesApi.remove).mockResolvedValue(undefined);
+  const onSsh = vi.fn();
+  render(<RemoteView onSsh={onSsh} />);
+  await screen.findByText(/尚未登记设备/);
+  fireEvent.click(screen.getByRole('button', { name: '添加设备' }));
+  fireEvent.change(screen.getByLabelText('设备名称'), { target: { value: 'NAS' } });
+  fireEvent.change(screen.getByLabelText('主机名或 IP'), { target: { value: '192.0.2.1' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存设备' }));
+  await screen.findByText('尚未检测');
+  expect(devicesApi.save).toHaveBeenCalledWith({ name: 'NAS', host: '192.0.2.1', port: 22, username: '' }, undefined);
+  fireEvent.click(screen.getByRole('button', { name: '检测端口' }));
+  await screen.findByText(/端口可达 · 12 ms/);
+  fireEvent.click(screen.getByRole('button', { name: 'SSH 连接' }));
+  expect(onSsh).toHaveBeenCalledWith(expect.objectContaining({ host: '192.0.2.1', port: 22 }));
+  fireEvent.click(screen.getByRole('button', { name: '删除' }));
+  expect(devicesApi.remove).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
+  await waitFor(() => expect(screen.queryByText('NAS')).toBeNull());
+});
+it('shows API failure instead of fabricating online devices', async () => {
+  vi.mocked(devicesApi.list).mockRejectedValue(new Error('offline'));
+  render(<RemoteView />);
+  expect((await screen.findByRole('alert')).textContent).toContain('offline');
+  expect(screen.queryByText('NAS')).toBeNull();
+});

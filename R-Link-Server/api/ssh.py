@@ -113,6 +113,8 @@ class SSHConnection:
                 "username": self.username,
                 "client_keys": [],
                 "agent_path": None,
+                "keepalive_interval": 30,
+                "keepalive_count_max": 3,
             }
 
             known_hosts = os.getenv("R_LINK_SSH_KNOWN_HOSTS")
@@ -143,10 +145,10 @@ class SSHConnection:
             )
 
             # 打开 PTY 会话
-            self.session = await self.client.create_process(
+            self.session = await asyncio.wait_for(self.client.create_process(
                 term_type="xterm-256color",
                 term_size=(columns, rows),
-            )
+            ), timeout=30)
 
             self.stdin = self.session.stdin
             self.stdout = self.session.stdout
@@ -350,7 +352,11 @@ async def ssh_websocket(
     )
 
     accepted_subprotocol = "r-link.ssh" if "r-link.ssh" in (websocket.scope.get("subprotocols") or []) else None
-    await websocket.accept(subprotocol=accepted_subprotocol)
+    try:
+        await websocket.accept(subprotocol=accepted_subprotocol)
+    except BaseException:
+        manager.close_connection(connection_id)
+        raise
 
     # 创建 SSH 连接包装
     conn = SSHConnection(

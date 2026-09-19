@@ -26,6 +26,7 @@ from api.plugins import router as plugins_router, set_plugin_manager
 from api.system import router as system_router
 from api.plugin_sources import router as sources_router
 from api.auth import router as auth_router
+from api.devices import router as devices_router
 from api.ssh import router as ssh_router
 from api.console import router as console_router, set_plugin_manager as set_console_plugin_manager
 
@@ -94,6 +95,7 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(auth_router)
+app.include_router(devices_router)
 app.include_router(plugins_router)
 app.include_router(system_router)
 app.include_router(sources_router)
