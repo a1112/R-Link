@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .plugin_interface import PluginInfo, PluginState, PluginStatus, IPlugin
 from .process_pool import ProcessPool
-from .python_plugin import PythonPlugin, PythonPluginInfo, PythonPluginManager
+from .python_plugin import PythonPlugin, PythonPluginInfo
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,6 @@ class PluginManager:
         self.builtin_dir = builtin_dir
         self.plugins: Dict[str, Union[BinaryPlugin, PythonPlugin]] = {}
         self.process_pool = ProcessPool()
-        self.python_plugin_manager = PythonPluginManager(plugins_dir, builtin_dir)
         self._load_plugins()
 
     def _load_plugins(self):
