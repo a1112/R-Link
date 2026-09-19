@@ -4,7 +4,7 @@
 
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Toaster, toast } from "sonner@2.0.3";
+import { Toaster, toast } from "sonner";
 import { supabase } from "./utils/supabase/client";
 
 // 常量

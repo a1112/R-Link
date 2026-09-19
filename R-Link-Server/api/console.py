@@ -7,14 +7,14 @@ from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from core.supabase_auth import require_auth
+from core.supabase_auth import require_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/console",
     tags=["Console"],
-    dependencies=[Depends(require_auth)],
+    dependencies=[Depends(require_admin)],
 )
 
 # 全局插件管理器引用
@@ -44,7 +44,7 @@ class ConsoleConfigRequest(BaseModel):
     """控制台配置请求"""
     command: str = Field("cmd.exe", description="要执行的命令")
     port: int = Field(7681, description="ttyd 监听端口")
-    enable_nginx_proxy: bool = Field(True, description="是否启用 nginx 代理")
+    enable_nginx_proxy: bool = Field(False, description="是否启用 nginx 代理")
 
 
 @router.get("/status")
@@ -59,6 +59,9 @@ async def get_console_status():
 async def start_console():
     """启动控制台服务"""
     plugin = get_console_plugin()
+    if not getattr(plugin, "instance", None):
+        if not _plugin_manager.start_plugin("ttyd-console"):
+            raise HTTPException(500, "Failed to initialize console plugin")
 
     # 获取插件实例并执行命令
     if hasattr(plugin, 'instance') and plugin.instance:

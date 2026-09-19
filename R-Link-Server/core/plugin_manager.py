@@ -169,7 +169,6 @@ class PluginManager:
         # 加载二进制插件
         self._load_binary_plugins()
         # 加载 Python 插件
-        self._load_python_plugins()
 
     def _load_binary_plugins(self):
         """加载二进制插件"""
@@ -278,6 +277,8 @@ class PluginManager:
         """从目录加载 Python 插件"""
         # 首先尝试加载 manifest
         manifest_file = plugin_dir / "manifest.yaml"
+        if not manifest_file.exists():
+            manifest_file = plugin_dir / "manifest.json"
         if manifest_file.exists():
             try:
                 import yaml
@@ -290,9 +291,9 @@ class PluginManager:
                     "version": data.get("version", "1.0.0"),
                     "description": data.get("description", ""),
                     "author": data.get("author", "Unknown"),
-                    "entry_file": data.get("entry", "__init__.py"),
+                    "entry_file": data.get("entry", data.get("entry_file", "__init__.py")),
                     "category": data.get("category", "general"),
-                    "builtin": data.get("builtin", dir_type == "builtin"),
+                    "builtin": dir_type == "builtin",
                     "icon": data.get("icon"),
                     "ui_template": data.get("ui_template"),
                     "default_config": data.get("config", {}),
@@ -463,7 +464,7 @@ class PluginManager:
             status = plugin.get_status()
             # 转换为 PluginState
             return PluginState(
-                status=PluginStatus.STOPPED if status["status"] == "loaded" else PluginStatus.RUNNING,
+                status={"running": PluginStatus.RUNNING, "error": PluginStatus.ERROR}.get(status["status"], PluginStatus.STOPPED),
                 pid=status.get("pid"),
                 port=status.get("port"),
                 uptime=status.get("uptime", 0),
@@ -539,6 +540,9 @@ class PluginManager:
 
     def cleanup(self):
         """清理所有插件"""
+        for plugin in self.plugins.values():
+            if isinstance(plugin, PythonPlugin):
+                plugin.stop()
         self.process_pool.cleanup()
 
     def _load_manifest(self, manifest_path: Path) -> PluginManifest:

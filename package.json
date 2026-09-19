@@ -1,6 +1,16 @@
 {
-  "dependencies": {
-    "@openai/codex": "^0.87.0",
-    "@std/assert": "npm:@jsr/std__assert@^0.221.0"
+  "name": "r-link",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "setup:web": "npm ci --prefix apps/r-link-web",
+    "dev": "npm run dev --prefix apps/r-link-web",
+    "dev:server": "python R-Link-Server/main.py",
+    "build": "npm run build --prefix apps/r-link-web",
+    "test": "npm test --prefix apps/r-link-web",
+    "test:server": "python -m pytest R-Link-Server -q",
+    "verify:migration": "python scripts/verify_web_migration.py",
+    "tauri:dev": "npm run tauri:dev --prefix apps/r-link-web",
+    "tauri:build": "npm run tauri:build --prefix apps/r-link-web"
   }
 }

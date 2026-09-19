@@ -33,7 +33,7 @@ export type RouteId =
 export interface RouteConfig {
   id: RouteId;
   label: string;
-  icon: React.ElementType;
+  icon: import("lucide-react").LucideIcon;
   title: string;
   description?: string;
   requireAuth?: boolean; // 是否需要登录

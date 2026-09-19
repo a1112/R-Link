@@ -6,7 +6,7 @@ authors = ["R-Link Team"]
 edition = "2021"
 
 [lib]
-name = "rlink_tauri"
+name = "rlink_app"
 path = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 

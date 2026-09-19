@@ -15,8 +15,8 @@ pub fn run() {
                 if let Some(window) = app.get_webview_window("main") {
                     if let Ok(Some(monitor)) = window.primary_monitor() {
                         let size = monitor.size();
-                        let width = (size.width as f64 * 0.7).round();
-                        let height = (size.height as f64 * 0.7).round();
+                        let width = (size.width as f64 / monitor.scale_factor() * 0.7).round();
+                        let height = (size.height as f64 / monitor.scale_factor() * 0.7).round();
                         let _ = window.set_size(Size::Logical(LogicalSize { width, height }));
                         let _ = window.center();
                     }

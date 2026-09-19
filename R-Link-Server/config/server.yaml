@@ -1,9 +1,10 @@
+# 配置示例；当前入口使用 main.py 与环境变量，不自动加载本文件。
 # R-Link-Server 配置文件
 
 server:
   host: "0.0.0.0"
-  port: 8000
-  reload: true  # 开发模式，生产环境设置为 false
+  port: 8210
+  reload: false  # 开发模式，生产环境设置为 false
 
 plugins:
   dir: "plugins"

@@ -151,9 +151,10 @@
       "source_path": "src-tauri/Cargo.toml",
       "source_mode": "100644",
       "source_git_blob": "09248beb63a9dabf4e17af02128b2b048d1816f6",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src-tauri/Cargo.toml",
-      "target_git_blob": "09248beb63a9dabf4e17af02128b2b048d1816f6"
+      "target_git_blob": "09248beb63a9dabf4e17af02128b2b048d1816f6",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src-tauri/Cargo.toml.source.txt"
     },
     {
       "source_path": "src-tauri/build.rs",
@@ -175,25 +176,28 @@
       "source_path": "src-tauri/icons/README.md",
       "source_mode": "100644",
       "source_git_blob": "32f41314fd85cf38d1736bf485fe029015bf8749",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src-tauri/icons/README.md",
-      "target_git_blob": "32f41314fd85cf38d1736bf485fe029015bf8749"
+      "target_git_blob": "32f41314fd85cf38d1736bf485fe029015bf8749",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src-tauri/icons/README.md.source.txt"
     },
     {
       "source_path": "src-tauri/src/lib.rs",
       "source_mode": "100644",
       "source_git_blob": "5e37f2235fa588d8e6fdb789dfba7bb5cf887177",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src-tauri/src/lib.rs",
-      "target_git_blob": "5e37f2235fa588d8e6fdb789dfba7bb5cf887177"
+      "target_git_blob": "5e37f2235fa588d8e6fdb789dfba7bb5cf887177",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src-tauri/src/lib.rs.source.txt"
     },
     {
       "source_path": "src-tauri/src/main.rs",
       "source_mode": "100644",
       "source_git_blob": "78470ad15d169d4a0f8aa72a084ea0fb0e0dd104",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src-tauri/src/main.rs",
-      "target_git_blob": "78470ad15d169d4a0f8aa72a084ea0fb0e0dd104"
+      "target_git_blob": "78470ad15d169d4a0f8aa72a084ea0fb0e0dd104",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src-tauri/src/main.rs.source.txt"
     },
     {
       "source_path": "src-tauri/tauri.conf.json",
@@ -275,9 +279,10 @@
       "source_path": "src/api/plugins.ts",
       "source_mode": "100644",
       "source_git_blob": "50ce64b2e1f92de0063e1055fd71cc1a491844f5",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/api/plugins.ts",
-      "target_git_blob": "50ce64b2e1f92de0063e1055fd71cc1a491844f5"
+      "target_git_blob": "50ce64b2e1f92de0063e1055fd71cc1a491844f5",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/api/plugins.ts.source.txt"
     },
     {
       "source_path": "src/api/system.ts",
@@ -316,49 +321,55 @@
       "source_path": "src/components/NodeDetailModal.tsx",
       "source_mode": "100644",
       "source_git_blob": "f28e9fb774fed94e75df8e86372a73c3de92d8cc",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/NodeDetailModal.tsx",
-      "target_git_blob": "f28e9fb774fed94e75df8e86372a73c3de92d8cc"
+      "target_git_blob": "f28e9fb774fed94e75df8e86372a73c3de92d8cc",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/NodeDetailModal.tsx.source.txt"
     },
     {
       "source_path": "src/components/PluginDetailModal.tsx",
       "source_mode": "100644",
       "source_git_blob": "b0ad8129d0a7cb5e6a67aeac3817986736c0e2c0",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/PluginDetailModal.tsx",
-      "target_git_blob": "b0ad8129d0a7cb5e6a67aeac3817986736c0e2c0"
+      "target_git_blob": "b0ad8129d0a7cb5e6a67aeac3817986736c0e2c0",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/PluginDetailModal.tsx.source.txt"
     },
     {
       "source_path": "src/components/PluginsView.tsx",
       "source_mode": "100644",
       "source_git_blob": "544b96900bdc1ac4507f858727d70114aa63ae08",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/PluginsView.tsx",
-      "target_git_blob": "544b96900bdc1ac4507f858727d70114aa63ae08"
+      "target_git_blob": "544b96900bdc1ac4507f858727d70114aa63ae08",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/PluginsView.tsx.source.txt"
     },
     {
       "source_path": "src/components/SupabaseConnectionTest.tsx",
       "source_mode": "100644",
       "source_git_blob": "5eeb3db4196192b01210150ab236070ea2f930ef",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/SupabaseConnectionTest.tsx",
-      "target_git_blob": "5eeb3db4196192b01210150ab236070ea2f930ef"
+      "target_git_blob": "5eeb3db4196192b01210150ab236070ea2f930ef",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/SupabaseConnectionTest.tsx.source.txt"
     },
     {
       "source_path": "src/components/SupabaseExample.tsx",
       "source_mode": "100644",
       "source_git_blob": "5ec849e5cdab882683724e28e79a39dd71fefc3e",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/SupabaseExample.tsx",
-      "target_git_blob": "5ec849e5cdab882683724e28e79a39dd71fefc3e"
+      "target_git_blob": "5ec849e5cdab882683724e28e79a39dd71fefc3e",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/SupabaseExample.tsx.source.txt"
     },
     {
       "source_path": "src/components/TopologyView.tsx",
       "source_mode": "100644",
       "source_git_blob": "3efba6f658af7a3abd6b154ce0236547d1670bac",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/TopologyView.tsx",
-      "target_git_blob": "3efba6f658af7a3abd6b154ce0236547d1670bac"
+      "target_git_blob": "3efba6f658af7a3abd6b154ce0236547d1670bac",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/TopologyView.tsx.source.txt"
     },
     {
       "source_path": "src/components/common/FileIcon.tsx",
@@ -436,9 +447,10 @@
       "source_path": "src/components/layout/Sidebar.tsx",
       "source_mode": "100644",
       "source_git_blob": "122cfd65e01e367c5439c70450ace1487f32bbae",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/layout/Sidebar.tsx",
-      "target_git_blob": "122cfd65e01e367c5439c70450ace1487f32bbae"
+      "target_git_blob": "122cfd65e01e367c5439c70450ace1487f32bbae",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/layout/Sidebar.tsx.source.txt"
     },
     {
       "source_path": "src/components/layout/TitleBar.tsx",
@@ -599,73 +611,82 @@
       "source_path": "src/components/ui/accordion.tsx",
       "source_mode": "100644",
       "source_git_blob": "aa2c37b252a6f4fa36c608f91e09f10740bdbfaa",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/accordion.tsx",
-      "target_git_blob": "aa2c37b252a6f4fa36c608f91e09f10740bdbfaa"
+      "target_git_blob": "aa2c37b252a6f4fa36c608f91e09f10740bdbfaa",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/accordion.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/alert-dialog.tsx",
       "source_mode": "100644",
       "source_git_blob": "68f3605cf204b73a0fc98b493900a9569e98c684",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/alert-dialog.tsx",
-      "target_git_blob": "68f3605cf204b73a0fc98b493900a9569e98c684"
+      "target_git_blob": "68f3605cf204b73a0fc98b493900a9569e98c684",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/alert-dialog.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/alert.tsx",
       "source_mode": "100644",
       "source_git_blob": "856b94db245b98afb9b458567b8f050804179f76",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/alert.tsx",
-      "target_git_blob": "856b94db245b98afb9b458567b8f050804179f76"
+      "target_git_blob": "856b94db245b98afb9b458567b8f050804179f76",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/alert.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/aspect-ratio.tsx",
       "source_mode": "100644",
       "source_git_blob": "2a2f462e2485fed8eed98afc7ea1377d6c5014d8",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/aspect-ratio.tsx",
-      "target_git_blob": "2a2f462e2485fed8eed98afc7ea1377d6c5014d8"
+      "target_git_blob": "2a2f462e2485fed8eed98afc7ea1377d6c5014d8",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/aspect-ratio.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/avatar.tsx",
       "source_mode": "100644",
       "source_git_blob": "589b166583f59799d32a83b2e9eec64c542839df",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/avatar.tsx",
-      "target_git_blob": "589b166583f59799d32a83b2e9eec64c542839df"
+      "target_git_blob": "589b166583f59799d32a83b2e9eec64c542839df",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/avatar.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/badge.tsx",
       "source_mode": "100644",
       "source_git_blob": "3f8eff87fb40c75325cf0b27aa175d3bc1e8a27f",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/badge.tsx",
-      "target_git_blob": "3f8eff87fb40c75325cf0b27aa175d3bc1e8a27f"
+      "target_git_blob": "3f8eff87fb40c75325cf0b27aa175d3bc1e8a27f",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/badge.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/breadcrumb.tsx",
       "source_mode": "100644",
       "source_git_blob": "d2adf987870332563506c7aa93346f0c44d958c9",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/breadcrumb.tsx",
-      "target_git_blob": "d2adf987870332563506c7aa93346f0c44d958c9"
+      "target_git_blob": "d2adf987870332563506c7aa93346f0c44d958c9",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/breadcrumb.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/button.tsx",
       "source_mode": "100644",
       "source_git_blob": "308ad2bda121a27dd16bfec17769a3eb56b66693",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/button.tsx",
-      "target_git_blob": "308ad2bda121a27dd16bfec17769a3eb56b66693"
+      "target_git_blob": "308ad2bda121a27dd16bfec17769a3eb56b66693",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/button.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/calendar.tsx",
       "source_mode": "100644",
       "source_git_blob": "b30236faaeb97276eda9777d5da8bfcc7a3e1cea",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/calendar.tsx",
-      "target_git_blob": "b30236faaeb97276eda9777d5da8bfcc7a3e1cea"
+      "target_git_blob": "b30236faaeb97276eda9777d5da8bfcc7a3e1cea",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/calendar.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/card.tsx",
@@ -679,97 +700,109 @@
       "source_path": "src/components/ui/carousel.tsx",
       "source_mode": "100644",
       "source_git_blob": "2752b36c7a87383674ab853aa489083c21a8d5d3",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/carousel.tsx",
-      "target_git_blob": "2752b36c7a87383674ab853aa489083c21a8d5d3"
+      "target_git_blob": "2752b36c7a87383674ab853aa489083c21a8d5d3",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/carousel.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/chart.tsx",
       "source_mode": "100644",
       "source_git_blob": "d558e197cddf5a44baceec57a935e9cc1ba8980f",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/chart.tsx",
-      "target_git_blob": "d558e197cddf5a44baceec57a935e9cc1ba8980f"
+      "target_git_blob": "d558e197cddf5a44baceec57a935e9cc1ba8980f",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/chart.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/checkbox.tsx",
       "source_mode": "100644",
       "source_git_blob": "a175500d236aca97562e2aad10838f3513f8ec76",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/checkbox.tsx",
-      "target_git_blob": "a175500d236aca97562e2aad10838f3513f8ec76"
+      "target_git_blob": "a175500d236aca97562e2aad10838f3513f8ec76",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/checkbox.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/collapsible.tsx",
       "source_mode": "100644",
       "source_git_blob": "baddbac04ba8175c9f800c4b0a82721609da2ed7",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/collapsible.tsx",
-      "target_git_blob": "baddbac04ba8175c9f800c4b0a82721609da2ed7"
+      "target_git_blob": "baddbac04ba8175c9f800c4b0a82721609da2ed7",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/collapsible.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/command.tsx",
       "source_mode": "100644",
       "source_git_blob": "8352a781be38fa69b05f051e529d8a27a8887602",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/command.tsx",
-      "target_git_blob": "8352a781be38fa69b05f051e529d8a27a8887602"
+      "target_git_blob": "8352a781be38fa69b05f051e529d8a27a8887602",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/command.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/context-menu.tsx",
       "source_mode": "100644",
       "source_git_blob": "d0eaf2269f9233b12745e6573f8c815426ad3a6e",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/context-menu.tsx",
-      "target_git_blob": "d0eaf2269f9233b12745e6573f8c815426ad3a6e"
+      "target_git_blob": "d0eaf2269f9233b12745e6573f8c815426ad3a6e",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/context-menu.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/dialog.tsx",
       "source_mode": "100644",
       "source_git_blob": "c1c678038745f80b73e528ef3a3fa4a0f9a5e857",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/dialog.tsx",
-      "target_git_blob": "c1c678038745f80b73e528ef3a3fa4a0f9a5e857"
+      "target_git_blob": "c1c678038745f80b73e528ef3a3fa4a0f9a5e857",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/dialog.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/drawer.tsx",
       "source_mode": "100644",
       "source_git_blob": "0afaf9f2a5af263969204b07719d9436ec3806f5",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/drawer.tsx",
-      "target_git_blob": "0afaf9f2a5af263969204b07719d9436ec3806f5"
+      "target_git_blob": "0afaf9f2a5af263969204b07719d9436ec3806f5",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/drawer.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/dropdown-menu.tsx",
       "source_mode": "100644",
       "source_git_blob": "4a6042f591a0d71e64025a9a6937b191c11b0872",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/dropdown-menu.tsx",
-      "target_git_blob": "4a6042f591a0d71e64025a9a6937b191c11b0872"
+      "target_git_blob": "4a6042f591a0d71e64025a9a6937b191c11b0872",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/dropdown-menu.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/form.tsx",
       "source_mode": "100644",
       "source_git_blob": "a4e6cdd217e89a1fd8399ce34675faad504c70d1",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/form.tsx",
-      "target_git_blob": "a4e6cdd217e89a1fd8399ce34675faad504c70d1"
+      "target_git_blob": "a4e6cdd217e89a1fd8399ce34675faad504c70d1",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/form.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/hover-card.tsx",
       "source_mode": "100644",
       "source_git_blob": "7c2efcbdd7089b67a29820ffcd97365e1dc226d6",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/hover-card.tsx",
-      "target_git_blob": "7c2efcbdd7089b67a29820ffcd97365e1dc226d6"
+      "target_git_blob": "7c2efcbdd7089b67a29820ffcd97365e1dc226d6",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/hover-card.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/input-otp.tsx",
       "source_mode": "100644",
       "source_git_blob": "3cdd90944b40cb890e7a3ade877e8bb99798da47",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/input-otp.tsx",
-      "target_git_blob": "3cdd90944b40cb890e7a3ade877e8bb99798da47"
+      "target_git_blob": "3cdd90944b40cb890e7a3ade877e8bb99798da47",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/input-otp.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/input.tsx",
@@ -783,105 +816,118 @@
       "source_path": "src/components/ui/label.tsx",
       "source_mode": "100644",
       "source_git_blob": "a8bb8a37914d6f0b830725629a8c810c759716bf",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/label.tsx",
-      "target_git_blob": "a8bb8a37914d6f0b830725629a8c810c759716bf"
+      "target_git_blob": "a8bb8a37914d6f0b830725629a8c810c759716bf",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/label.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/menubar.tsx",
       "source_mode": "100644",
       "source_git_blob": "ef5fcb2deed8f31c794fceefcf294a8210ee3630",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/menubar.tsx",
-      "target_git_blob": "ef5fcb2deed8f31c794fceefcf294a8210ee3630"
+      "target_git_blob": "ef5fcb2deed8f31c794fceefcf294a8210ee3630",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/menubar.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/navigation-menu.tsx",
       "source_mode": "100644",
       "source_git_blob": "a4a30ed93f1e077062ea3b8e8c2e0562a1337ba4",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/navigation-menu.tsx",
-      "target_git_blob": "a4a30ed93f1e077062ea3b8e8c2e0562a1337ba4"
+      "target_git_blob": "a4a30ed93f1e077062ea3b8e8c2e0562a1337ba4",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/navigation-menu.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/pagination.tsx",
       "source_mode": "100644",
       "source_git_blob": "bb813296a1f247a02741d869ce51997b6513e2fa",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/pagination.tsx",
-      "target_git_blob": "bb813296a1f247a02741d869ce51997b6513e2fa"
+      "target_git_blob": "bb813296a1f247a02741d869ce51997b6513e2fa",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/pagination.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/popover.tsx",
       "source_mode": "100644",
       "source_git_blob": "908620a9fd3436b5a729287bbe55f5bfb4607735",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/popover.tsx",
-      "target_git_blob": "908620a9fd3436b5a729287bbe55f5bfb4607735"
+      "target_git_blob": "908620a9fd3436b5a729287bbe55f5bfb4607735",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/popover.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/progress.tsx",
       "source_mode": "100644",
       "source_git_blob": "93f8fc85314837c35c6883e3840aca110fd61540",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/progress.tsx",
-      "target_git_blob": "93f8fc85314837c35c6883e3840aca110fd61540"
+      "target_git_blob": "93f8fc85314837c35c6883e3840aca110fd61540",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/progress.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/radio-group.tsx",
       "source_mode": "100644",
       "source_git_blob": "962096944944b33373e983beb813b98c0248976c",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/radio-group.tsx",
-      "target_git_blob": "962096944944b33373e983beb813b98c0248976c"
+      "target_git_blob": "962096944944b33373e983beb813b98c0248976c",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/radio-group.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/resizable.tsx",
       "source_mode": "100644",
       "source_git_blob": "163ee35c6bcb6f678a9cce1a5eedc16b05e71222",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/resizable.tsx",
-      "target_git_blob": "163ee35c6bcb6f678a9cce1a5eedc16b05e71222"
+      "target_git_blob": "163ee35c6bcb6f678a9cce1a5eedc16b05e71222",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/resizable.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/scroll-area.tsx",
       "source_mode": "100644",
       "source_git_blob": "97f2f40ea264688f14db6cb6b943296a1b0bebdb",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/scroll-area.tsx",
-      "target_git_blob": "97f2f40ea264688f14db6cb6b943296a1b0bebdb"
+      "target_git_blob": "97f2f40ea264688f14db6cb6b943296a1b0bebdb",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/scroll-area.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/select.tsx",
       "source_mode": "100644",
       "source_git_blob": "bd1333fbfa9dcdca854c53f881b23aab06c0063e",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/select.tsx",
-      "target_git_blob": "bd1333fbfa9dcdca854c53f881b23aab06c0063e"
+      "target_git_blob": "bd1333fbfa9dcdca854c53f881b23aab06c0063e",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/select.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/separator.tsx",
       "source_mode": "100644",
       "source_git_blob": "5589b9172cf9d96b1d95203f6922d1174b50778e",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/separator.tsx",
-      "target_git_blob": "5589b9172cf9d96b1d95203f6922d1174b50778e"
+      "target_git_blob": "5589b9172cf9d96b1d95203f6922d1174b50778e",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/separator.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/sheet.tsx",
       "source_mode": "100644",
       "source_git_blob": "acf38331593af1ef88196b651dd11114c4a90141",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/sheet.tsx",
-      "target_git_blob": "acf38331593af1ef88196b651dd11114c4a90141"
+      "target_git_blob": "acf38331593af1ef88196b651dd11114c4a90141",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/sheet.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/sidebar.tsx",
       "source_mode": "100644",
       "source_git_blob": "aae55b28cbc8956493450598c10c9c708f914baf",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/sidebar.tsx",
-      "target_git_blob": "aae55b28cbc8956493450598c10c9c708f914baf"
+      "target_git_blob": "aae55b28cbc8956493450598c10c9c708f914baf",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/sidebar.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/skeleton.tsx",
@@ -895,25 +941,28 @@
       "source_path": "src/components/ui/slider.tsx",
       "source_mode": "100644",
       "source_git_blob": "3432fd02e18e48ace4dd2d0186b418e36e04c014",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/slider.tsx",
-      "target_git_blob": "3432fd02e18e48ace4dd2d0186b418e36e04c014"
+      "target_git_blob": "3432fd02e18e48ace4dd2d0186b418e36e04c014",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/slider.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/sonner.tsx",
       "source_mode": "100644",
       "source_git_blob": "40842fbdcb1d4a834e1ba94923c6700d0eb5b01e",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/sonner.tsx",
-      "target_git_blob": "40842fbdcb1d4a834e1ba94923c6700d0eb5b01e"
+      "target_git_blob": "40842fbdcb1d4a834e1ba94923c6700d0eb5b01e",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/sonner.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/switch.tsx",
       "source_mode": "100644",
       "source_git_blob": "000e10ccbb0d00a4bdd518db4c0b6e5030db49f0",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/switch.tsx",
-      "target_git_blob": "000e10ccbb0d00a4bdd518db4c0b6e5030db49f0"
+      "target_git_blob": "000e10ccbb0d00a4bdd518db4c0b6e5030db49f0",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/switch.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/table.tsx",
@@ -927,9 +976,10 @@
       "source_path": "src/components/ui/tabs.tsx",
       "source_mode": "100644",
       "source_git_blob": "aeb0ff0d76c834839169b54ba236fb061b81e203",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/tabs.tsx",
-      "target_git_blob": "aeb0ff0d76c834839169b54ba236fb061b81e203"
+      "target_git_blob": "aeb0ff0d76c834839169b54ba236fb061b81e203",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/tabs.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/textarea.tsx",
@@ -943,25 +993,28 @@
       "source_path": "src/components/ui/toggle-group.tsx",
       "source_mode": "100644",
       "source_git_blob": "88e9fbc9f5e1a823f2d66873b7c73b04dc6ac7a8",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/toggle-group.tsx",
-      "target_git_blob": "88e9fbc9f5e1a823f2d66873b7c73b04dc6ac7a8"
+      "target_git_blob": "88e9fbc9f5e1a823f2d66873b7c73b04dc6ac7a8",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/toggle-group.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/toggle.tsx",
       "source_mode": "100644",
       "source_git_blob": "e74387907768abad8ecefcec55224c9395599338",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/toggle.tsx",
-      "target_git_blob": "e74387907768abad8ecefcec55224c9395599338"
+      "target_git_blob": "e74387907768abad8ecefcec55224c9395599338",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/toggle.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/tooltip.tsx",
       "source_mode": "100644",
       "source_git_blob": "79d9ab4ae1858315aa4007983c13e2cac8194f83",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/ui/tooltip.tsx",
-      "target_git_blob": "79d9ab4ae1858315aa4007983c13e2cac8194f83"
+      "target_git_blob": "79d9ab4ae1858315aa4007983c13e2cac8194f83",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/ui/tooltip.tsx.source.txt"
     },
     {
       "source_path": "src/components/ui/use-mobile.ts",
@@ -999,9 +1052,10 @@
       "source_path": "src/constants/routes.ts",
       "source_mode": "100644",
       "source_git_blob": "db02bd5a02047b7bcb4bc172fc35e1f5e2c26d6c",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/constants/routes.ts",
-      "target_git_blob": "db02bd5a02047b7bcb4bc172fc35e1f5e2c26d6c"
+      "target_git_blob": "db02bd5a02047b7bcb4bc172fc35e1f5e2c26d6c",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/constants/routes.ts.source.txt"
     },
     {
       "source_path": "src/constants/theme.ts",
@@ -1090,9 +1144,10 @@
       "source_path": "src/utils/supabase/auth.ts",
       "source_mode": "100644",
       "source_git_blob": "2c18d328ff25dfad48dc663a50e71b297d09ef23",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/utils/supabase/auth.ts",
-      "target_git_blob": "2c18d328ff25dfad48dc663a50e71b297d09ef23"
+      "target_git_blob": "2c18d328ff25dfad48dc663a50e71b297d09ef23",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/auth.ts.source.txt"
     },
     {
       "source_path": "src/utils/supabase/client.ts",
@@ -1107,9 +1162,10 @@
       "source_path": "src/utils/supabase/database.ts",
       "source_mode": "100644",
       "source_git_blob": "83b17564fac11c20dfc682435a864216667acc8d",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/utils/supabase/database.ts",
-      "target_git_blob": "83b17564fac11c20dfc682435a864216667acc8d"
+      "target_git_blob": "83b17564fac11c20dfc682435a864216667acc8d",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/database.ts.source.txt"
     },
     {
       "source_path": "src/utils/supabase/info.tsx",
@@ -1123,9 +1179,10 @@
       "source_path": "src/utils/supabase/types.ts",
       "source_mode": "100644",
       "source_git_blob": "1feaf8665fe9eb978abe509c2cf4ed78d11d5269",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/utils/supabase/types.ts",
-      "target_git_blob": "1feaf8665fe9eb978abe509c2cf4ed78d11d5269"
+      "target_git_blob": "1feaf8665fe9eb978abe509c2cf4ed78d11d5269",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/utils/supabase/types.ts.source.txt"
     },
     {
       "source_path": "src/utils/tauriWindow.ts",
@@ -1155,9 +1212,10 @@
       "source_path": "tsconfig.json",
       "source_mode": "100644",
       "source_git_blob": "c20738e2839535c4db7d2e159cfb38647a8ea3c2",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/tsconfig.json",
-      "target_git_blob": "c20738e2839535c4db7d2e159cfb38647a8ea3c2"
+      "target_git_blob": "c20738e2839535c4db7d2e159cfb38647a8ea3c2",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/tsconfig.json.source.txt"
     },
     {
       "source_path": "tsconfig.node.json",

@@ -4,7 +4,7 @@
  */
 
 import { supabase } from "./client";
-import type { AuthError, Session, User, Provider } from "@supabase/supabase-js";
+import type { AuthError, AuthChangeEvent, Session, User, Provider } from "@supabase/supabase-js";
 
 export interface AuthState {
   session: Session | null;
@@ -133,7 +133,7 @@ export const authApi = {
    * 监听认证状态变化
    */
   onAuthStateChange(
-    callback: (event: "INITIAL_SESSION" | "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED", session: Session | null) => void
+    callback: (event: AuthChangeEvent, session: Session | null) => void
   ) {
     const {
       data: { subscription },
@@ -199,7 +199,7 @@ export const createAuthStore = () => {
     getState: () => state,
     subscribe: (listener: (state: AuthState) => void) => {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      return () => { listeners.delete(listener); };
     },
     signIn: async (credentials: SignInCredentials) => {
       const { session } = await authApi.signInWithPassword(credentials);

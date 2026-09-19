@@ -32,7 +32,7 @@ async def get_system_info():
 
 
 @router.get("/resources")
-async def get_system_resources():
+def get_system_resources():
     """获取系统资源使用情况"""
     # CPU
     cpu_percent = psutil.cpu_percent(interval=1)

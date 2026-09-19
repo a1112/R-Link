@@ -134,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   active={activeRoute === route.id}
                   onClick={() => onRouteChange(route.id)}
                   collapsed={collapsed}
-                  badge={route.id === 'downloads' && undefined} // 可以下载数量
+                  badge={route.badge} // 可以下载数量
                 />
               );
             })}

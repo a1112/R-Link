@@ -1,5 +1,16 @@
 # lcxinc/R-Link-Web 迁移记录
 
+## 2026-09-19 整合复核
+
+统一维护入口为本仓库 `apps/r-link-web/`。已核对来源主分支 `9b737e6` 相对初始快照的 15 个变更路径，见 [source-head-review.json](source-head-review.json)。依赖分支意图此前已整合，本次继续保留原件。
+
+来源完整历史已保存为 Git bundle 并通过 `git bundle verify`，SHA-256 见增量核对文件；历史可能含旧本地配置，因此 bundle 位于 Git 忽略的 `.repository-consolidation-local/`。原 `.env` 备份继续保留且未启用。
+
+校验现在针对保存的来源原件：运行文件可继续维护，修改前将来源原件归档并在清单登记。归档仍按原 Git blob 校验，禁止通过更新预期 hash 掩盖损坏。
+
+以下内容为早期迁移阶段的历史记录，其中“待合并/待退役”描述不代表本次最终状态。
+
+
 来源：`lcxinc/R-Link-Web`，默认分支提交 `f2b95e8c6cf1b1bfa1d234bf64404d6cfb16863a`，树 `a30f75994d272f6bd8ed16e73538c7fee5013c17`。
 目标基线：`2408ef4f0c98993c63fbac5f940ab4a30509ada0`，运行目录 `apps/r-link-web/`。
 

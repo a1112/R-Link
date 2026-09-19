@@ -26,7 +26,9 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-const NodeDetailModal = ({ node, onClose }) => {
+export interface TopologyNode { id: string; type: string; x: number; y: number; label: string; status: string; ip?: string }
+
+const NodeDetailModal = ({ node, onClose }: { node: TopologyNode; onClose: () => void }) => {
   // Mock data for demonstration
   const plugins = [
     { id: 'nginx', name: 'Nginx', icon: Globe, active: true },
@@ -44,7 +46,7 @@ const NodeDetailModal = ({ node, onClose }) => {
     { id: 'restart', name: '重启系统', icon: RefreshCw, color: 'text-red-400' },
   ];
 
-  const getNodeIcon = (type) => {
+  const getNodeIcon = (type: string) => {
     switch(type) {
         case 'cloud': return Cloud;
         case 'router': return Wifi;

@@ -21,6 +21,7 @@ import uvicorn
 
 from core.plugin_manager import PluginManager
 from core.supabase_auth import auth_manager
+from core.paths import PLUGINS_DIR, BUILTIN_DIR, CONFIG_DIR, LOGS_DIR
 from api.plugins import router as plugins_router, set_plugin_manager
 from api.system import router as system_router
 from api.plugin_sources import router as sources_router
@@ -30,15 +31,14 @@ from api.console import router as console_router, set_plugin_manager as set_cons
 
 # 配置日志
 # 创建必要的目录
-Path("logs").mkdir(exist_ok=True)
-Path("config").mkdir(exist_ok=True)
-Path("plugins").mkdir(exist_ok=True)
+for directory in (LOGS_DIR, CONFIG_DIR, PLUGINS_DIR):
+    directory.mkdir(exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/server.log'),
+        logging.FileHandler(LOGS_DIR / 'server.log', encoding='utf-8'),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting R-Link-Server...")
 
     # 初始化插件管理器（用户插件 + 内置插件）
-    plugin_manager = PluginManager(plugins_dir="plugins", builtin_dir="builtin")
+    plugin_manager = PluginManager(plugins_dir=str(PLUGINS_DIR), builtin_dir=str(BUILTIN_DIR))
     set_plugin_manager(plugin_manager)
     set_console_plugin_manager(plugin_manager)
 
@@ -65,13 +65,15 @@ async def lifespan(app: FastAPI):
     plugins = plugin_manager.get_all_plugins()
     logger.info(f"Loaded {len(plugins)} plugins: {[p.name for p in plugins]}")
 
-    yield
-
-    # 关闭时清理
-    logger.info("Shutting down R-Link-Server...")
-    if plugin_manager:
+    try:
+        yield
+    finally:
+        from api.ssh import active_connections
+        for connection in list(active_connections.values()):
+            await connection.close()
+        logger.info("Shutting down R-Link-Server...")
         plugin_manager.cleanup()
-    await auth_manager.close()
+        await auth_manager.close()
 
 
 # 创建 FastAPI 应用
@@ -85,8 +87,11 @@ app = FastAPI(
 # 配置 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应该限制具体的域名
-    allow_credentials=True,
+    allow_origins=[origin.strip() for origin in os.getenv(
+        "R_LINK_CORS_ORIGINS",
+        "http://127.0.0.1:4322,http://localhost:4322,tauri://localhost,http://tauri.localhost",
+    ).split(",") if origin.strip()],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -125,13 +130,13 @@ async def global_exception_handler(request, exc):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc)}
+        content={"detail": "Internal server error"}
     )
 
 
 def main():
     """主函数"""
-    is_dev = os.getenv("DEV", "dev").lower() in {"1", "true", "yes", "on", "dev", "development"}
+    is_dev = os.getenv("DEV", "false").lower() in {"1", "true", "yes", "on", "dev", "development"}
     uvicorn.run(
         "main:app",
         host="0.0.0.0",

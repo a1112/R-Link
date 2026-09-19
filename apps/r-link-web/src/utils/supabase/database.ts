@@ -699,10 +699,7 @@ export const systemConfigApi = {
 export const subscriptionApi = {
   subscribeToPluginConfigs(
     userId: string,
-    callback: (payload: {
-      eventType: "INSERT" | "UPDATE" | "DELETE";
-      record: PluginConfigs["Row"];
-    }) => void
+    callback: (payload: import("@supabase/supabase-js").RealtimePostgresChangesPayload<PluginConfigs["Row"]>) => void
   ) {
     return supabase
       .channel(`plugin_configs:${userId}`)
@@ -721,10 +718,7 @@ export const subscriptionApi = {
 
   subscribeToNotifications(
     userId: string,
-    callback: (payload: {
-      eventType: "INSERT" | "UPDATE" | "DELETE";
-      record: Notifications["Row"];
-    }) => void
+    callback: (payload: import("@supabase/supabase-js").RealtimePostgresChangesPayload<Notifications["Row"]>) => void
   ) {
     return supabase
       .channel(`notifications:${userId}`)

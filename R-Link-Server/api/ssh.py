@@ -8,7 +8,7 @@ import logging
 import os
 import uuid
 from typing import Dict, Optional, Set, TYPE_CHECKING
-from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
 from core.supabase_auth import auth_manager, require_auth
@@ -92,6 +92,7 @@ class SSHConnection:
         self.session: Optional["SSHClientSession"] = None
         self.read_task: Optional[asyncio.Task] = None
         self.closed = False
+        self.owner_id: Optional[str] = None
 
     async def connect(
         self,
@@ -110,8 +111,13 @@ class SSHConnection:
                 "host": self.host,
                 "port": self.port,
                 "username": self.username,
-                "known_hosts": None,  # 禁用主机密钥检查（生产环境应该启用）
+                "client_keys": [],
+                "agent_path": None,
             }
+
+            known_hosts = os.getenv("R_LINK_SSH_KNOWN_HOSTS")
+            if known_hosts:
+                connect_kwargs["known_hosts"] = known_hosts
 
             # 添加认证方式
             if private_key:
@@ -127,7 +133,8 @@ class SSHConnection:
                 connect_kwargs["password"] = password
             else:
                 # 尝试使用默认 SSH agent 或本地密钥
-                pass
+                await self.send_json({"type": "error", "message": "必须提供密码或私钥"})
+                return False
 
             # 建立连接
             self.client = await asyncio.wait_for(
@@ -136,10 +143,9 @@ class SSHConnection:
             )
 
             # 打开 PTY 会话
-            self.session = await self.client.create_session(
+            self.session = await self.client.create_process(
                 term_type="xterm-256color",
-                columns=columns,
-                rows=rows,
+                term_size=(columns, rows),
             )
 
             self.stdin = self.session.stdin
@@ -226,27 +232,27 @@ class SSHConnection:
             return
         self.closed = True
 
-        if self.read_task:
+        if self.read_task and self.read_task is not asyncio.current_task():
             self.read_task.cancel()
             try:
                 await self.read_task
             except asyncio.CancelledError:
                 pass
 
-        if self.stdin:
-            self.stdin.close()
-            await asyncio.sleep(0.1)
-
-        if self.session:
-            self.session.exit()
-            await asyncio.sleep(0.1)
-
-        if self.client:
-            self.client.close()
-            await self.client.wait_closed()
-
-        active_connections.pop(self.connection_id, None)
-        logger.info(f"SSH connection closed: {self.connection_id}")
+        try:
+            if self.stdin:
+                self.stdin.close()
+            if self.client:
+                self.client.close()
+                await self.client.wait_closed()
+        finally:
+            active_connections.pop(self.connection_id, None)
+            get_connection_manager().close_connection(self.connection_id)
+            try:
+                await self.websocket.close()
+            except (RuntimeError, WebSocketDisconnect):
+                pass
+            logger.info(f"SSH connection closed: {self.connection_id}")
 
     @property
     def is_connected(self) -> bool:
@@ -254,33 +260,27 @@ class SSHConnection:
         return self.client is not None and not self.closed
 
 
-@router.get("/connections", dependencies=[Depends(require_auth)])
-async def list_connections():
-    """列出所有活动连接"""
-
-    manager = get_connection_manager()
-    return {
-        "connections": manager.list_connections(),
-        "count": len(active_connections),
-    }
+@router.get("/connections")
+async def list_connections(user: dict = Depends(require_auth)):
+    connections = [record for record in get_connection_manager().list_connections()
+                   if (conn := active_connections.get(record["id"])) and conn.owner_id == user["id"]]
+    return {"connections": connections, "count": len(connections)}
 
 
-@router.post("/connections/{connection_id}/close", dependencies=[Depends(require_auth)])
-async def close_connection(connection_id: str):
-    """关闭指定连接"""
-
+@router.post("/connections/{connection_id}/close")
+async def close_connection(connection_id: str, user: dict = Depends(require_auth)):
     conn = active_connections.get(connection_id)
-    if conn:
-        await conn.close()
-        return {"success": True, "message": "Connection closed"}
-    return {"error": "Connection not found"}
+    if not conn or conn.owner_id != user["id"]:
+        raise HTTPException(404, "Connection not found")
+    await conn.close()
+    return {"success": True, "message": "Connection closed"}
 
 
 @router.websocket("/connect")
 async def ssh_websocket(
     websocket: WebSocket,
     host: str = Query(..., description="SSH 服务器地址"),
-    port: int = Query(22, description="SSH 端口"),
+    port: int = Query(22, ge=1, le=65535, description="SSH 端口"),
     username: str = Query(..., description="用户名"),
 ):
     """
@@ -339,6 +339,9 @@ async def ssh_websocket(
     # 更新连接管理器
 
     manager = get_connection_manager()
+    if manager.get_connection_count() >= manager.max_connections:
+        await websocket.close(code=1013, reason="SSH connection limit reached")
+        return
     ssh_conn = manager.create_connection(
         connection_id=connection_id,
         host=host,
@@ -357,11 +360,12 @@ async def ssh_websocket(
         port=port,
         username=username,
     )
+    conn.owner_id = websocket.scope["r_link_ws_claims"]["sub"]
     active_connections[connection_id] = conn
 
     try:
         # 等待认证消息
-        auth_message = await websocket.receive_json()
+        auth_message = await asyncio.wait_for(websocket.receive_json(), timeout=30)
 
         if auth_message.get("type") != "auth":
             await conn.send_json({

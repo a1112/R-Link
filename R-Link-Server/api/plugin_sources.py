@@ -8,18 +8,19 @@ import logging
 import json
 from pathlib import Path
 
-from core.supabase_auth import require_auth
+from core.supabase_auth import require_admin
+from core.paths import CONFIG_DIR
 
 router = APIRouter(
     prefix="/api/plugin-sources",
     tags=["plugin-sources"],
-    dependencies=[Depends(require_auth)],
+    dependencies=[Depends(require_admin)],
 )
 
 logger = logging.getLogger(__name__)
 
 # 插件源配置文件路径
-SOURCES_CONFIG_FILE = "config/plugin_sources.json"
+SOURCES_CONFIG_FILE = CONFIG_DIR / "plugin_sources.json"
 
 
 class PluginSource(BaseModel):

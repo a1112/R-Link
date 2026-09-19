@@ -33,6 +33,8 @@ R-Link-Server/
 └── requirements.txt        # 依赖
 ```
 
+启动与认证配置以[根目录说明](../README.md)为准。配置、日志和插件路径相对于服务端目录解析。
+
 ## 快速开始
 
 ### 1. 安装依赖
@@ -47,11 +49,11 @@ pip install -r requirements.txt
 python main.py
 ```
 
-服务将运行在 `http://localhost:8000`
+服务将运行在 `http://localhost:8210`
 
 ### 3. API 文档
 
-访问 `http://localhost:8000/docs` 查看 Swagger API 文档
+访问 `http://localhost:8210/docs` 查看 Swagger API 文档
 
 ## API 端点
 
