@@ -25,7 +25,6 @@ export type RouteId =
   | 'domains'
   | 'storage'
   | 'plugins'
-  | 'profile'
   | 'downloads'
   | 'ssh'
   | 'console';
@@ -36,7 +35,6 @@ export interface RouteConfig {
   icon: import("lucide-react").LucideIcon;
   title: string;
   description?: string;
-  requireAuth?: boolean; // 是否需要登录
   badge?: number | string;
 }
 
@@ -54,7 +52,6 @@ export const routes: RouteConfig[] = [
     icon: Activity,
     title: '数据分析',
     description: '流量分析与统计报表',
-    requireAuth: true,
   },
   {
     id: 'network',
@@ -119,13 +116,7 @@ export const routes: RouteConfig[] = [
     title: 'Web 控制台',
     description: '本地终端访问 (ttyd)',
   },
-  {
-    id: 'profile',
-    label: '我的',
-    icon: User,
-    title: '个人中心',
-    description: '账户设置与个人偏好',
-  },
+
 ];
 
 export const routesByGroupId: Record<string, RouteId[]> = {
@@ -133,7 +124,6 @@ export const routesByGroupId: Record<string, RouteId[]> = {
   network: ['network', 'remote', 'ssh', 'console', 'frp', 'domains'],
   storage: ['storage'],
   extensions: ['plugins', 'downloads'],
-  personal: ['profile'],
 };
 
 export const getRouteById = (id: RouteId): RouteConfig | undefined => {

@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, Any
 import os
 
-from core.supabase_auth import require_auth
+from core.auth import require_auth
 
 router = APIRouter(
     prefix="/api/system",

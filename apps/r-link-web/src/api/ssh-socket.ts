@@ -14,7 +14,7 @@ export async function openSshSocket(url: URL, signal: AbortSignal): Promise<WebS
   if (url.origin !== origin.origin) throw new Error('SSH 服务地址与 API 配置不一致');
   const ticket = await http.post<{ token: string; scope: string }>('/api/auth/ws-token', undefined, { signal });
   if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
-  if (!ticket.token || ticket.scope !== 'ssh') throw new Error('SSH 登录票据无效');
+  if (!ticket.token || ticket.scope !== 'ssh') throw new Error('SSH 访问票据无效');
   const socket = new WebSocket(url.toString(), ['r-link.ssh', `r-link.ssh-token.${ticket.token}`]);
   const close = () => socket.close();
   signal.addEventListener('abort', close, { once: true });

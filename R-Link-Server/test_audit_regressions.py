@@ -14,36 +14,8 @@ from core.plugin_packages import install_zip, plugin_path
 from core.plugin_manager import PluginManager, BinaryPlugin
 from core.plugin_interface import PluginStatus
 from core.python_plugin import PythonPlugin
-from core.supabase_auth import auth_manager, require_admin, require_auth
+from core.auth import access_manager, require_admin, require_auth
 from main import app
-
-
-@pytest.mark.asyncio
-async def test_user_metadata_cannot_grant_administrator(monkeypatch):
-    monkeypatch.delenv("R_LINK_ADMIN_USER_IDS", raising=False)
-    with pytest.raises(HTTPException) as error:
-        await require_admin({"id": "user", "user_metadata": {"role": "admin"}})
-    assert error.value.status_code == 403
-    assert await require_admin({"id": "admin", "app_metadata": {"role": "admin"}})
-    monkeypatch.setenv("R_LINK_ADMIN_USER_IDS", "first, user")
-    assert await require_admin({"id": "user"})
-
-
-@pytest.mark.parametrize("method,path", [
-    ("POST", "/api/plugins/reload"), ("POST", "/api/plugins/install/url"),
-    ("DELETE", "/api/plugins/uninstall"), ("POST", "/api/console/start"),
-    ("GET", "/api/plugin-sources/"),
-])
-def test_regular_users_cannot_manage_server(method, path):
-    app.dependency_overrides[require_auth] = lambda: {"id": "ordinary-user"}
-    try:
-        client = TestClient(app)
-        try:
-            assert client.request(method, path, json={}).status_code == 403
-        finally:
-            client.close()
-    finally:
-        app.dependency_overrides.clear()
 
 
 @pytest.mark.parametrize("name", ["..", "../outside", "a/b", "a\\b", "C:\\outside", "temp", "NUL", "x:y"])
@@ -153,11 +125,11 @@ async def test_ssh_connection_owner_isolation():
 
 @pytest.mark.asyncio
 async def test_ticket_expiry_boundary_and_malformed_payload(monkeypatch):
-    monkeypatch.setattr("core.supabase_auth.time.time", lambda: 1000)
-    token = await auth_manager.issue_websocket_token({"id": "u"}, scope="ssh", ttl_seconds=0)
-    assert await auth_manager.verify_websocket_token(token, expected_scope="ssh") is None
-    assert await auth_manager.verify_websocket_token("闈炴硶.payload", expected_scope="ssh") is None
-    assert await auth_manager.verify_websocket_token(auth_manager._encode_websocket_token([]), expected_scope="ssh") is None
+    monkeypatch.setattr("core.auth.time.time", lambda: 1000)
+    token = await access_manager.issue_websocket_token({"id": "u"}, scope="ssh", ttl_seconds=0)
+    assert await access_manager.verify_websocket_token(token, expected_scope="ssh") is None
+    assert await access_manager.verify_websocket_token("闈炴硶.payload", expected_scope="ssh") is None
+    assert await access_manager.verify_websocket_token(access_manager._encode_websocket_token([]), expected_scope="ssh") is None
 
 
 def test_ttyd_start_uses_executable_path_and_loopback(tmp_path, monkeypatch):

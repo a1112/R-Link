@@ -20,7 +20,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 from core.plugin_manager import PluginManager
-from core.supabase_auth import auth_manager
+from core.auth import allowed_origins, server_host
 from core.paths import PLUGINS_DIR, BUILTIN_DIR, CONFIG_DIR, LOGS_DIR
 from api.plugins import router as plugins_router, set_plugin_manager
 from api.system import router as system_router
@@ -73,7 +73,6 @@ async def lifespan(app: FastAPI):
             await connection.close()
         logger.info("Shutting down R-Link-Server...")
         plugin_manager.cleanup()
-        await auth_manager.close()
 
 
 # 创建 FastAPI 应用
@@ -87,10 +86,7 @@ app = FastAPI(
 # 配置 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in os.getenv(
-        "R_LINK_CORS_ORIGINS",
-        "http://127.0.0.1:4322,http://localhost:4322,tauri://localhost,http://tauri.localhost",
-    ).split(",") if origin.strip()],
+    allow_origins=allowed_origins(),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -139,7 +135,7 @@ def main():
     is_dev = os.getenv("DEV", "false").lower() in {"1", "true", "yes", "on", "dev", "development"}
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
+        host=server_host(),
         port=8210,
         reload=is_dev,
         log_level="info"

@@ -17,7 +17,7 @@ from pathlib import Path
 
 from core.plugin_manager import PluginManager
 from core.plugin_interface import PluginState
-from core.supabase_auth import require_admin
+from core.auth import require_admin
 
 logger = logging.getLogger(__name__)
 

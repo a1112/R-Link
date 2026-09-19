@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from core.supabase_auth import auth_manager
+from core.auth import access_manager
 from main import app
 from api import ssh as ssh_api
 
@@ -31,7 +31,7 @@ def test_management_endpoints_reject_anonymous_requests(method, path):
 def test_websocket_rejects_missing_or_wrong_scope(scope):
     protocols = ["r-link.ssh"]
     if scope:
-        token = asyncio.run(auth_manager.issue_websocket_token({"id": "test-user"}, scope=scope, ttl_seconds=60))
+        token = asyncio.run(access_manager.issue_websocket_token({"id": "test-user"}, scope=scope, ttl_seconds=60))
         protocols.append(f"r-link.ssh-token.{token}")
     client = TestClient(app)
     try:
@@ -47,7 +47,7 @@ def test_scoped_websocket_handshake_and_cleanup_without_ssh(monkeypatch):
     async def forbidden_connection(*args, **kwargs):
         pytest.fail("A real SSH connection must never start in this test")
     monkeypatch.setattr(ssh_api.SSHConnection, "connect", forbidden_connection)
-    token = asyncio.run(auth_manager.issue_websocket_token({"id": "test-user"}, scope="ssh", ttl_seconds=60))
+    token = asyncio.run(access_manager.issue_websocket_token({"id": "test-user"}, scope="ssh", ttl_seconds=60))
     client = TestClient(app)
     try:
         with client.websocket_connect("/api/ssh/connect?host=unused.invalid&username=test", subprotocols=["r-link.ssh", f"r-link.ssh-token.{token}"]) as ws:
@@ -73,21 +73,10 @@ def test_dynamic_plugin_and_api_share_connection_registry():
     assert module.Plugin({}).manager is ssh_api.get_connection_manager()
 
 
-def test_websocket_signing_secret_never_uses_public_anon_key(monkeypatch):
-    from core import supabase_auth
-
+def test_websocket_signing_secret_is_private_and_configurable(monkeypatch):
+    from core.auth import LocalAuth
     monkeypatch.delenv("R_LINK_WS_TOKEN_SECRET", raising=False)
-    monkeypatch.setattr(supabase_auth, "SUPABASE_ANON_KEY", "public-anon-key")
-    first, second = supabase_auth.SupabaseAuth(), supabase_auth.SupabaseAuth()
-    try:
-        assert first.websocket_secret != "public-anon-key"
-        assert first.websocket_secret != second.websocket_secret
-        monkeypatch.setenv("R_LINK_WS_TOKEN_SECRET", "configured-server-secret")
-        configured = supabase_auth.SupabaseAuth()
-        try:
-            assert configured.websocket_secret == "configured-server-secret"
-        finally:
-            asyncio.run(configured.close())
-    finally:
-        asyncio.run(first.close())
-        asyncio.run(second.close())
+    first, second = LocalAuth(), LocalAuth()
+    assert first.websocket_secret != second.websocket_secret
+    monkeypatch.setenv("R_LINK_WS_TOKEN_SECRET", "configured-server-secret")
+    assert LocalAuth().websocket_secret == "configured-server-secret"

@@ -1,7 +1,7 @@
 /**
  * 用户协议和隐私条款弹窗组件
  *
- * 展示使用条款和本地数据说明
+ * 用于首次登录时展示用户协议和隐私政策
  */
 
 import React, { useState } from "react";
@@ -168,7 +168,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
                 </Section>
 
                 <Section title="3. 用户责任">
-                  您同意对您的设备、访问密钥和连接活动的安全性负责。您不得：
+                  您同意对您的账户和活动的安全性负责。您不得：
                   <ul className="list-disc list-inside mt-2 space-y-1">
                     <li>使用服务进行任何非法目的</li>
                     <li>侵犯他人的知识产权</li>
@@ -193,11 +193,12 @@ export const TermsModal: React.FC<TermsModalProps> = ({
 
                 <Section title="6. 条款变更">
                   我们保留随时修改这些条款的权利。变更后继续使用服务即表示您接受修改后的条款。
-                  变更记录随项目版本发布。
+                  重大变更将通过平台通知或邮件告知。
                 </Section>
 
                 <Section title="7. 终止">
-                  您可以随时停止运行客户端和服务端，并自行清理本地配置与日志。
+                  我们保留在您违反这些条款时暂停或终止您账户访问权限的权利。
+                  您也可以随时停止使用服务并删除您的账户。
                 </Section>
               </motion.div>
             )}
@@ -211,17 +212,93 @@ export const TermsModal: React.FC<TermsModalProps> = ({
                 transition={{ duration: 0.15 }}
                 className="space-y-2"
               >
-                <Section title="1. 本地数据">
-                  客户端偏好保存在本机浏览器存储中；可选的服务访问密钥仅保存在当前标签页的会话存储中。
-                  插件配置和服务日志保存在您运行 R-Link 服务端的设备上。
+                <Section title="1. 信息收集">
+                  我们可能收集以下类型的信息：
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>账户信息：</strong>用户名、邮箱地址</li>
+                    <li><strong>使用数据：</strong>登录时间、操作日志</li>
+                    <li><strong>设备信息：</strong>IP 地址、浏览器类型、操作系统</li>
+                    <li><strong>插件数据：</strong>已安装插件列表和配置</li>
+                  </ul>
                 </Section>
-                <Section title="2. 网络连接">
-                  客户端向您配置的 R-Link 服务发送管理请求。SSH 凭据用于连接您指定的主机；插件安装和第三方插件可能访问相应的外部服务。
-                  应用不提供云账号注册、账号登录或云端数据库同步。
+
+                <Section title="2. 信息使用">
+                  我们使用收集的信息用于：
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>提供、维护和改进服务</li>
+                    <li>处理交易和发送相关通知</li>
+                    <li>发送技术通知、更新和安全警报</li>
+                    <li>响应评论、问题和客户服务请求</li>
+                    <li>监控和分析使用趋势</li>
+                  </ul>
                 </Section>
-                <Section title="3. 数据管理">
-                  您可以在系统设置中清除服务访问密钥，或清理浏览器存储、本地配置与日志。
-                  远程服务的数据由该服务的维护者管理；第三方插件的数据处理方式以其各自说明为准。
+
+                <Section title="3. 信息共享">
+                  我们不会出售、交易或出租您的个人信息。我们可能在以下情况下共享信息：
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>获得您的同意</li>
+                    <li>遵守法律义务或保护我们的权利</li>
+                    <li>与服务提供商合作（如 Supabase）</li>
+                  </ul>
+                </Section>
+
+                <Section title="4. 数据安全">
+                  我们采取合理的技术和组织措施来保护您的数据：
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>使用 HTTPS 加密传输</li>
+                    <li>密码哈希存储</li>
+                    <li>定期安全审计</li>
+                    <li>访问控制和身份验证</li>
+                  </ul>
+                </Section>
+
+                <Section title="5. Cookie 政策">
+                  我们使用 Cookie 和类似技术来：
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>记住您的登录状态</li>
+                    <li>记住您的偏好设置</li>
+                    <li>分析平台使用情况</li>
+                  </ul>
+                  您可以通过浏览器设置管理 Cookie。
+                </Section>
+
+                <Section title="6. 您的权利">
+                  您对自己的数据拥有以下权利：
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>访问权：</strong>请求查看我们持有的您的数据</li>
+                    <li><strong>更正权：</strong>更新或修正不准确的信息</li>
+                    <li><strong>删除权：</strong>请求删除您的账户和数据</li>
+                    <li><strong>反对权：</strong>反对某些数据处理活动</li>
+                  </ul>
+                </Section>
+
+                <Section title="7. 数据保留">
+                  我们仅在必要期间保留您的数据。当您删除账户时，我们将：
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>立即删除您的个人信息</li>
+                    <li>在 30 天内删除相关日志和备份数据</li>
+                    <li>保留法律要求必须保留的数据</li>
+                  </ul>
+                </Section>
+
+                <Section title="8. 儿童隐私">
+                  我们的服务不面向 13 岁以下的儿童。如果我们发现收集了此类信息，
+                      将立即删除。如果您是家长或监护人，请联系我们。
+                </Section>
+
+                <Section title="9. 隐私政策变更">
+                  我们可能会更新本隐私政策。重大变更将通过平台通知您。
+                  继续使用服务即表示您接受更新的政策。
+                </Section>
+
+                <Section title="10. 联系我们">
+                  如果您对本隐私政策有任何疑问，请通过以下方式联系我们：
+                  <div className="mt-2 p-3 bg-[var(--c-900)] rounded-lg border border-[var(--c-800)]">
+                    <div className="text-[var(--c-300)]">
+                      <p>邮箱：privacy@r-link.dev</p>
+                      <p>GitHub：github.com/r-link/r-link</p>
+                    </div>
+                  </div>
                 </Section>
               </motion.div>
             )}

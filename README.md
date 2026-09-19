@@ -16,8 +16,9 @@ python -m venv .venv
 python -m pip install -r R-Link-Server/requirements-test.txt
 ```
 
-复制 `apps/r-link-web/.env.example` 为 `.env.local`，填写公开的 Supabase URL/key。在服务端进程环境设置同一项目的 `SUPABASE_URL`、`SUPABASE_ANON_KEY`，并用 `R_LINK_ADMIN_USER_IDS` 指定管理员用户 UUID（多个用逗号分隔），或在 Supabase 的管理员管理字段 `app_metadata.role` 中赋值 `admin`。普通账号不能管理插件或本机控制台。
+本地使用无需云账号或数据库配置，启动后直接进入管理界面。服务端默认只监听 `127.0.0.1`，检查客户端地址、Host 和浏览器来源。需要自定义 API 地址时，复制 `apps/r-link-web/.env.example` 为 `.env.local` 并设置 `VITE_API_BASE_URL`。
 
+远程部署（包括通过反向代理提供服务）必须先设置随机的 `R_LINK_API_TOKEN`，再按需设置 `R_LINK_HOST`。在客户端“系统设置 → 服务访问”中填写相同密钥；密钥只保存在当前浏览器会话，并且只发送到配置的 API 地址。配置密钥后，本机请求也需提供密钥。远程访问应使用 HTTPS；这是单一服务操作员访问模式，没有云账号或用户角色。
 ```sh
 # 已激活 Python 环境的终端
 npm run dev:server

@@ -11,7 +11,7 @@ from typing import Dict, Optional, Set, TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-from core.supabase_auth import auth_manager, require_auth
+from core.auth import access_manager, require_auth
 
 if TYPE_CHECKING:
     from asyncssh import SSHClientConnection, SSHReader, SSHWriter, SSHClientSession
@@ -37,7 +37,7 @@ async def _authenticate_websocket(websocket: WebSocket) -> bool:
         await websocket.close(code=1008, reason="WebSocket token required")
         return False
 
-    claims = await auth_manager.verify_websocket_token(token, expected_scope="ssh")
+    claims = await access_manager.verify_websocket_token(token, expected_scope="ssh")
     if claims is None:
         await websocket.close(code=1008, reason="Invalid websocket token")
         return False

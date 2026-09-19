@@ -32,6 +32,17 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   const hasWindowControls = isDesktopRuntime();
 
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    const raw = window.localStorage.getItem("auth_user");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  });
+
   // 初始化最大化状态
   useEffect(() => {
     if (!isElectron || !(window as any).electronWindow?.isMaximized) return;

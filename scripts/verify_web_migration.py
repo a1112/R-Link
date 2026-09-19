@@ -17,7 +17,11 @@ manifest = json.loads((directory / 'manifest.json').read_bytes())
 def verify_entries(entries):
     for entry in entries:
         target = entry['target_path']
-        assert target in tracked and (root / target).is_file(), target
+        if entry.get('retired_reason'):
+            assert entry.get('archive_path'), target
+            assert target not in tracked and not (root / target).exists(), target
+        else:
+            assert target in tracked and (root / target).is_file(), target
         preserved = entry.get('archive_path', target)
         expected = entry.get('source_git_blob')
         if entry.get('disposition') == 'redacted_local_configuration':

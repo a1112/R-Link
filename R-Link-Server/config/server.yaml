@@ -2,7 +2,7 @@
 # R-Link-Server 配置文件
 
 server:
-  host: "0.0.0.0"
+  host: "127.0.0.1"
   port: 8210
   reload: false  # 开发模式，生产环境设置为 false
 
