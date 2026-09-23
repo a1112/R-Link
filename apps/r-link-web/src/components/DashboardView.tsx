@@ -107,7 +107,7 @@ export const DashboardView: React.FC = () => {
         <StatCard
           title="活跃插件"
           value={pluginsError ? "不可用" : plugins ? `${stats.onlinePlugins}/${stats.totalPlugins}` : "--"}
-          sub={pluginsLoading ? '加载中...' : '运行中'}
+          sub={pluginsError ? '读取失败' : pluginsLoading ? '加载中...' : '运行中'}
           icon={Puzzle}
         />
         <StatCard
@@ -123,7 +123,7 @@ export const DashboardView: React.FC = () => {
         <StatCard
           title="存储已用"
           value={resources ? stats.diskUsed : "--"}
-          sub={`${formatPercent(stats.diskPercent)} 已用`}
+          sub={resources ? `${formatPercent(stats.diskPercent)} 已用` : '等待数据'}
           icon={HardDrive}
         />
       </div>

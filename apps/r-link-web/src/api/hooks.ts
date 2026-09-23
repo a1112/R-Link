@@ -3,7 +3,7 @@ import { pluginsApi, systemApi } from './index';
 import { usePolling } from './usePolling';
 
 export function usePlugins() {
-  return usePolling(useCallback((signal: AbortSignal) => pluginsApi.listWithStatus(signal), []));
+  return usePolling(useCallback((signal: AbortSignal) => pluginsApi.listWithStatus(signal), []), 5000);
 }
 export function usePlugin(name: string) {
   return usePolling(useCallback((signal: AbortSignal) => name ? pluginsApi.get(name, signal) : Promise.resolve(null), [name]));

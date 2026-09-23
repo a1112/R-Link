@@ -51,8 +51,11 @@ class ConsoleConfigRequest(BaseModel):
 async def get_console_status():
     """获取控制台状态"""
     plugin = get_console_plugin()
-    status = plugin.get_status()
-    return status
+    # The wrapper's lifecycle status says whether Python was loaded, not whether
+    # a ttyd child exists. Expose the console instance's actual process state.
+    if getattr(plugin, "instance", None):
+        return plugin.instance.get_status()
+    return {"status": "stopped", "ttyd_running": False, "pid": None, "console_url": None}
 
 
 @router.post("/start")
@@ -122,8 +125,7 @@ async def update_console_config(request: ConsoleConfigRequest):
         "enable_nginx_proxy": request.enable_nginx_proxy,
     }
 
-    if hasattr(plugin, 'instance') and plugin.instance:
-        plugin.instance.set_config(config)
+    if plugin.set_config(config):
         return {"success": True, "config": config}
     else:
-        return {"error": "Plugin instance not available"}
+        raise HTTPException(500, "Console configuration was not saved; stop the console before changing it")

@@ -17,7 +17,6 @@ export * from './modals';
 
 // 专用视图
 export { TopologyView } from './TopologyView';
-export { NodeDetailModal } from './NodeDetailModal';
 export { PluginDetailModal } from './PluginDetailModal';
 export { DashboardView } from './DashboardView';
 export { PluginsView } from './PluginsView';

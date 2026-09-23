@@ -1,60 +1,10 @@
-# 远程组网演示
+# NetBird 虚拟组网
 
-## NetBird - 零配置 WireGuard VPN
+R-Link 服务端通过 NetBird Public API 管理真实虚拟组网；它不自行运行 WireGuard、信令或中继服务。要形成跨设备网络，先部署 NetBird 控制面，再在每台设备安装 NetBird Agent。
 
-### 什么是 NetBird
+1. 按 [官方自建指南](https://docs.netbird.io/selfhosted/selfhosted-quickstart) 部署 NetBird，或使用现有 NetBird 服务。
+2. 创建具有组网管理权限的服务用户 PAT。为 R-Link 服务端设置 `R_LINK_NETBIRD_URL`（HTTPS 根地址）和 `R_LINK_NETBIRD_TOKEN`。
+3. 打开 R-Link“虚拟组网”页面，创建分组及入网密钥。把显示一次的密钥安全交给目标设备，在设备上执行 `netbird up --management-url https://你的域名 --setup-key <密钥>`。
+4. 在页面查看真实节点状态，管理分组、访问策略、网络资源和路由节点。用目标设备上的 `netbird status` 及实际网络访问验证连通性。
 
-NetBird 是一个类似 Tailscale 的开源组网工具，基于 WireGuard 实现。
-
-### 快速开始
-
-```bash
-# 安装 NetBird (需要先从 Releases 下载二进制文件)
-# Windows: netbird.exe install
-# Linux:   sudo netbird service install
-
-# 连接到管理面板
-netbird up
-
-# 查看连接状态
-netbird status
-
-# 查看对等节点
-netbird list
-```
-
-### 配置文件位置
-- Windows: `%LOCALAPPDATA%\NetBird\config.json`
-- Linux: `~/.config/netbird/config.json`
-- macOS: `~/Library/Application Support/NetBird/config.json`
-
-### 管理面板
-
-自建管理面板需要配置：
-1. 创建 NetBird 账户/管理服务
-2. 配置客户端连接到自建服务器
-3. 设置访问策略
-
-### 自建服务端示例
-
-参考 `submodules/netbird/` 中的部署文档：
-```bash
-# 使用 Docker 部署管理服务
-cd submodules/netbird
-docker compose up -d
-```
-
-## 二进制文件使用
-
-将编译好的二进制文件放置在 `../../binaries/networking/` 目录：
-- `netbird.exe` (Windows) / `netbird` (Linux/macOS)
-
-## 最小化配置示例
-
-```json
-{
-  "ManagementURL": "https://api.netbird.io",
-  "AdminURL": "https://api.netbird.io",
-  "PreSharedKey": ""
-}
-```
+服务端环境变量、API 范围、认证和限制见[组网部署说明](../../docs/server-implementation-20260922.md#虚拟组网部署和使用)。原演示目录的批处理脚本仅用于安装、启动或查看本机 Agent；不要把本机 Agent 当成服务端控制面。

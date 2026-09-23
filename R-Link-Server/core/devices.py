@@ -7,6 +7,7 @@ import os
 import re
 import sqlite3
 import uuid
+from typing import Literal
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -35,6 +36,40 @@ class DeviceInput(BaseModel):
         if address.is_unspecified or address.is_multicast or str(address) == "255.255.255.255" or "%" in value:
             raise ValueError("Use a unicast device address")
         return str(address)
+
+
+class DeviceInventory(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    version: Literal[1] = 1
+    devices: list[DeviceInput] = Field(max_length=256)
+
+
+def export_inventory():
+    return {'version': 1, 'devices': [
+        {key: item[key] for key in ('name', 'host', 'port', 'username')} for item in list_devices()
+    ]}
+
+
+def import_inventory(inventory: DeviceInventory):
+    # Validate the entire document before opening the transaction. Existing
+    # host/port pairs are never overwritten, including duplicates within a file.
+    with database() as db:
+        db.execute('BEGIN IMMEDIATE')
+        known = {(row['host'], row['port']) for row in db.execute('SELECT host, port FROM devices')}
+        initial_count = len(known)
+        added = skipped = 0
+        for item in inventory.devices:
+            key = (item.host, item.port)
+            if key in known:
+                skipped += 1
+                continue
+            if initial_count + added >= 256:
+                raise HTTPException(409, '导入后设备数量超过 256，未写入任何设备')
+            db.execute('INSERT INTO devices (id,name,host,port,username) VALUES (?,?,?,?,?)',
+                       (str(uuid.uuid4()), item.name, item.host, item.port, item.username))
+            known.add(key)
+            added += 1
+        return {'added': added, 'skipped': skipped}
 
 
 @contextmanager

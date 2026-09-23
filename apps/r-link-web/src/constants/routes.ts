@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   Activity,
   Share2,
+  Network,
   Monitor,
   Globe,
   Link,
@@ -20,6 +21,7 @@ export type RouteId =
   | 'dashboard'
   | 'analytics'
   | 'network'
+  | 'mesh'
   | 'remote'
   | 'frp'
   | 'domains'
@@ -48,17 +50,24 @@ export const routes: RouteConfig[] = [
   },
   {
     id: 'analytics',
-    label: '数据分析',
+    label: '流量监控',
     icon: Activity,
-    title: '数据分析',
-    description: '流量分析与统计报表',
+    title: '服务端流量监控',
+    description: '服务端网络接口实时流量',
   },
   {
     id: 'network',
-    label: '网络拓扑图',
+    label: '设备连接视图',
     icon: Share2,
-    title: '网络拓扑管理',
-    description: '可视化管理虚拟局域网与设备连接',
+    title: '设备连接视图',
+    description: '已登记设备及 TCP 检测结果',
+  },
+  {
+    id: 'mesh',
+    label: '虚拟组网',
+    icon: Network,
+    title: 'NetBird 虚拟组网',
+    description: '真实节点、入网密钥、访问策略和网络路由',
   },
   {
     id: 'remote',
@@ -83,10 +92,10 @@ export const routes: RouteConfig[] = [
   },
   {
     id: 'storage',
-    label: '文件管理',
+    label: '共享文件',
     icon: Folder,
-    title: '文件管理',
-    description: 'WebDAV 云存储文件浏览器',
+    title: '服务端共享文件',
+    description: '共享区浏览、上传和下载',
   },
   {
     id: 'plugins',
@@ -100,7 +109,7 @@ export const routes: RouteConfig[] = [
     label: '下载管理',
     icon: Download,
     title: '下载管理',
-    description: '管理插件下载和更新任务',
+    description: '服务端后台下载队列与续传',
   },
   {
     id: 'ssh',
@@ -121,7 +130,7 @@ export const routes: RouteConfig[] = [
 
 export const routesByGroupId: Record<string, RouteId[]> = {
   overview: ['dashboard', 'analytics'],
-  network: ['network', 'remote', 'ssh', 'console', 'frp', 'domains'],
+  network: ['network', 'mesh', 'remote', 'ssh', 'console', 'frp', 'domains'],
   storage: ['storage'],
   extensions: ['plugins', 'downloads'],
 };

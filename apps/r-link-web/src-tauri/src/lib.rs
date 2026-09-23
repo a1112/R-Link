@@ -16,6 +16,7 @@ pub fn run() {
         project_resource_monitor::project_resource_snapshot,
         desktop_tray::desktop_preferences,
         desktop_tray::set_close_to_tray,
+        desktop_tray::hide_to_tray,
     ]);
     #[cfg(mobile)]
     let builder = builder.invoke_handler(tauri::generate_handler![project_resource_monitor::project_resource_snapshot]);

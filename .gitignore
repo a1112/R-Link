@@ -45,3 +45,7 @@ logs/
 R-Link-Server/config/plugin_sources.json
 
 R-Link-Server/config/devices.sqlite3*
+R-Link-Server/shared/
+R-Link-Server/data/
+R-Link-Server/.env
+deploy/.env

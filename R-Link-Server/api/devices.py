@@ -17,6 +17,14 @@ def list_devices():
 def create_device(data: devices.DeviceInput):
     return devices.save_device(data)
 
+@router.get('/export')
+def export_devices():
+    return devices.export_inventory()
+
+@router.post('/import')
+def import_devices(data: devices.DeviceInventory):
+    return devices.import_inventory(data)
+
 @router.put("/{device_id}")
 def update_device(device_id: str, data: devices.DeviceInput):
     return devices.save_device(data, device_id)

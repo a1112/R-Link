@@ -1,152 +1,99 @@
-/**
- * 文件存储管理页面组件
- */
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { File, Folder, ArrowUp, Upload, FolderPlus, RefreshCw } from 'lucide-react';
+import { storageApi, type StorageEntry } from '../../api/storage';
+import { usePolling } from '../../api/usePolling';
+import { saveBlob } from '../../utils/download';
 
-import React, { useState } from "react";
-import { ArrowUp, HardDrive, MoreHorizontal, Plus } from "lucide-react";
-import { toast } from "sonner";
-import { FileIcon } from "../common";
-import { useBackNavigation } from "@/hooks";
-
-// 文件系统模拟数据
-const fileSystem: Record<string, Array<{ id: number; name: string; size: string; date: string; type: string }>> = {
-  '': [
-    { id: 1, name: "项目文档", size: "-", date: "10月 24", type: "folder" },
-    { id: 2, name: "设计资源", size: "-", date: "10月 23", type: "folder" },
-    { id: 3, name: "根目录文件.pdf", size: "4.2 MB", date: "10月 22", type: "document" },
-  ],
-  '项目文档': [
-    { id: 11, name: "需求说明书.docx", size: "1.2 MB", date: "10月 25", type: "document" },
-    { id: 12, name: "API接口文档.md", size: "45 KB", date: "10月 25", type: "code" },
-  ],
-  '设计资源': [
-    { id: 21, name: "Logo.svg", size: "12 KB", date: "10月 23", type: "image" },
-    { id: 22, name: "Banner.png", size: "2.4 MB", date: "10月 23", type: "image" },
-  ],
-};
-
-export const StorageView: React.FC = () => {
-  const [currentPath, setCurrentPath] = useState<string[]>([]);
-
-  // 获取当前路径的文件
-  const getCurrentPathKey = () => {
-    return currentPath.length > 0 ? currentPath[currentPath.length - 1] : '';
+const button = 'rounded-lg border border-[var(--c-700)] px-3 py-2 text-sm disabled:opacity-40';
+function sizeLabel(size: number | null) {
+  if (size === null) return '—';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KiB`;
+  return `${(size / 1024 / 1024).toFixed(1)} MiB`;
+}
+export function StorageView() {
+  const [path, setPath] = useState('');
+  const { data, loading, error, refetch } = usePolling(useCallback((signal: AbortSignal) => storageApi.list(path, signal), [path]));
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [form, setForm] = useState<{ kind: 'mkdir' | 'rename'; path: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState<StorageEntry | null>(null);
+  const transfer = useRef<AbortController | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  useEffect(() => () => transfer.current?.abort(), []);
+  const perform = async (action: () => Promise<void>) => {
+    if (busy) return;
+    setBusy(true); setActionError(''); setMessage('');
+    try { await action(); }
+    catch (e) { setActionError(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
   };
-
-  const currentFiles = fileSystem[getCurrentPathKey()] || [];
-
-  const handleNavigate = (folderName: string) => {
-    setCurrentPath([...currentPath, folderName]);
-  };
-
-  const handleBack = () => {
-    if (currentPath.length > 0) {
-      setCurrentPath(currentPath.slice(0, -1));
-      toast.info("已返回上一级");
-    } else {
-      toast.warning("已经是根目录");
-    }
-  };
-
-  useBackNavigation(handleBack, true);
-
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-[var(--c-100)] tracking-tight">文件管理</h2>
-          <p className="text-[var(--c-500)] text-sm">WebDAV 云存储文件浏览器</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="bg-[var(--c-800)] hover:bg-[var(--c-700)] text-[var(--c-200)] px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
-            <ArrowUp size={16} /> 上传
-          </button>
-          <button className="bg-[var(--c-100)] hover:bg-[var(--c-white)] text-[var(--c-900)] px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
-            <Plus size={16} /> 新建文件夹
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-[var(--c-900)] border border-[var(--c-800)] rounded-xl overflow-hidden flex flex-col h-[600px]">
-        {/* 面包屑导航 */}
-        <div className="p-4 border-b border-[var(--c-800)] flex items-center gap-2 text-sm">
-          <button
-            onClick={handleBack}
-            disabled={currentPath.length === 0}
-            className="p-1.5 rounded-md hover:bg-[var(--c-800)] text-[var(--c-400)] disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-colors mr-2"
-          >
-            <ArrowUp className="-rotate-90" size={16} />
-          </button>
-          <span
-            className={`p-1.5 rounded-md hover:bg-[var(--c-800)] text-[var(--c-400)] cursor-pointer transition-colors ${currentPath.length === 0 ? 'text-[var(--c-100)]' : ''}`}
-            onClick={() => setCurrentPath([])}
-          >
-            <HardDrive size={16} />
-          </span>
-          <span className="text-[var(--c-600)]">/</span>
-          <span
-            className={`font-medium cursor-pointer transition-colors ${currentPath.length === 0 ? 'text-[var(--c-200)]' : 'text-[var(--c-500)] hover:text-[var(--c-200)]'}`}
-            onClick={() => setCurrentPath([])}
-          >
-            根目录
-          </span>
-          {currentPath.map((folder, index) => (
-            <React.Fragment key={folder}>
-              <span className="text-[var(--c-600)]">/</span>
-              <span
-                className={`font-medium cursor-pointer transition-colors ${index === currentPath.length - 1 ? 'text-[var(--c-200)]' : 'text-[var(--c-500)] hover:text-[var(--c-200)]'}`}
-                onClick={() => setCurrentPath(currentPath.slice(0, index + 1))}
-              >
-                {folder}
-              </span>
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* 文件列表 */}
-        <div className="flex-1 overflow-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--c-800)] text-[var(--c-500)]">
-                <th className="p-4 font-medium w-10"></th>
-                <th className="p-4 font-medium">文件名</th>
-                <th className="p-4 font-medium">大小</th>
-                <th className="p-4 font-medium">修改时间</th>
-                <th className="p-4 font-medium text-right"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--c-800-50)]">
-              {currentFiles.map((file) => (
-                <tr
-                  key={file.id}
-                  onClick={() => file.type === 'folder' && handleNavigate(file.name)}
-                  className="group hover:bg-[var(--c-800-30)] transition-colors cursor-pointer"
-                >
-                  <td className="p-4 pl-6">
-                    <FileIcon type={file.type as any} />
-                  </td>
-                  <td className="p-4 font-medium text-[var(--c-200)] group-hover:text-blue-400 transition-colors">{file.name}</td>
-                  <td className="p-4 text-[var(--c-500)] font-mono text-xs">{file.size}</td>
-                  <td className="p-4 text-[var(--c-500)] text-xs">{file.date}</td>
-                  <td className="p-4 text-right pr-6">
-                    <button className="opacity-0 group-hover:opacity-100 p-2 text-[var(--c-400)] hover:text-[var(--c-100)] transition-all">
-                      <MoreHorizontal size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 底部状态栏 */}
-        <div className="p-4 border-t border-[var(--c-800)] bg-[var(--c-900-50)] flex justify-between items-center text-xs text-[var(--c-500)]">
-          <span>已选择 {currentFiles.length} 项</span>
-          <span>已用 2.4 GB / 总共 1 TB</span>
-        </div>
+  const navigate = (next: string) => { setPath(next); setForm(null); setDeleting(null); setMessage(''); setActionError(''); };
+  const disabled = busy || loading;
+  return <section className="space-y-5 pb-6">
+    <div className="flex flex-wrap justify-between gap-4">
+      <div><h2 className="text-xl font-bold">共享文件</h2><p className="mt-2 text-sm text-[var(--c-400)]">文件保存在当前服务端的独立共享区。单文件最多 64 MiB，同名文件不会被覆盖。</p></div>
+      <div className="flex gap-2 items-start">
+        <button className={button} disabled={disabled} onClick={() => void perform(async () => { await refetch(); })}><RefreshCw size={14} className="inline mr-1" />刷新</button>
+        <button className={button} disabled={disabled || !data} onClick={() => setForm({ kind: 'mkdir', path, name: '' })}><FolderPlus size={14} className="inline mr-1" />新建文件夹</button>
+        <button className={button} disabled={disabled || !data} onClick={() => fileInput.current?.click()}><Upload size={14} className="inline mr-1" />上传文件</button>
+        <input ref={fileInput} type="file" className="hidden" aria-label="选择上传文件" disabled={disabled || !data} onChange={event => {
+          const file = event.target.files?.[0]; event.target.value = '';
+          if (!file) return;
+          if (file.size > (data?.max_file_bytes ?? 64 * 1024 * 1024)) { setActionError('单文件不能超过 64 MiB'); return; }
+          void perform(async () => {
+            transfer.current = new AbortController();
+            await storageApi.upload(path, file, transfer.current.signal);
+            setMessage(`已上传 ${file.name}`); await refetch();
+          });
+        }} />
       </div>
     </div>
-  );
-};
-
+    <nav aria-label="文件路径" className="flex flex-wrap gap-2 items-center text-sm">
+      <button disabled={disabled || !path} className={button} aria-label="返回上一级" onClick={() => navigate(path.split('/').slice(0, -1).join('/'))}><ArrowUp size={16} /></button>
+      <button disabled={disabled} onClick={() => navigate('')}>共享区</button>
+      {path.split('/').filter(Boolean).map((part, index, parts) => <span key={index}> / <button disabled={disabled} onClick={() => navigate(parts.slice(0, index + 1).join('/'))}>{part}</button></span>)}
+    </nav>
+    {busy && <p role="status" className="text-[var(--c-400)]">正在处理，请稍候…</p>}
+    {message && <p role="status" className="text-emerald-400">{message}</p>}
+    {(actionError || error) && <p role="alert" className="text-red-400">{actionError || error?.message}</p>}
+    {form && <form className="rounded-xl border border-[var(--c-700)] p-4 flex gap-3 items-end" onSubmit={event => {
+      event.preventDefault();
+      void perform(async () => {
+        if (form.kind === 'mkdir') await storageApi.mkdir(form.path, form.name);
+        else await storageApi.rename(form.path, form.name);
+        setForm(null); setMessage(form.kind === 'mkdir' ? '文件夹已创建' : '名称已更新'); await refetch();
+      });
+    }}>
+      <label className="flex-1">{form.kind === 'mkdir' ? '文件夹名称' : '新名称'}<input required maxLength={240} disabled={busy} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="block w-full mt-2 rounded bg-[var(--c-900)] border border-[var(--c-700)] p-2" /></label>
+      <button type="submit" className={button} disabled={busy}>保存</button><button type="button" className={button} disabled={busy} onClick={() => setForm(null)}>取消</button>
+    </form>}
+    {deleting && <div role="dialog" aria-label="确认删除文件" className="rounded-xl border border-red-500/30 p-4 space-y-3">
+      <p>删除“{deleting.name}”？此操作无法撤销；仅允许删除文件或空文件夹。</p>
+      <button disabled={busy} className={button} onClick={() => void perform(async () => { await storageApi.remove(deleting.path); setDeleting(null); setMessage('已删除'); await refetch(); })}>确认删除</button>
+      <button disabled={busy} className={button} onClick={() => setDeleting(null)}>取消删除</button>
+    </div>}
+    {loading ? <p role="status">正在读取文件…</p> : data && <>
+      {data.skipped > 0 && <p className="text-sm text-amber-400">{data.skipped} 个链接或不支持的条目未显示。</p>}
+      {data.entries.length === 0 ? <div className="rounded-xl border border-[var(--c-800)] p-10 text-center text-[var(--c-400)]">当前目录为空，可以上传文件或新建文件夹。</div> :
+        <div className="overflow-x-auto rounded-xl border border-[var(--c-800)]"><table className="w-full text-sm text-left">
+          <thead className="bg-[var(--c-900)] text-[var(--c-400)]"><tr><th className="p-3">名称</th><th className="p-3">大小</th><th className="p-3">修改时间</th><th className="p-3">操作</th></tr></thead>
+          <tbody>{data.entries.map(item => <tr key={item.path} className="border-t border-[var(--c-800)]">
+            <td className="p-3 max-w-sm break-all">{item.kind === 'directory' ? <button disabled={disabled} onClick={() => navigate(item.path)} className="inline-flex gap-2 items-center text-blue-400"><Folder size={18} />{item.name}</button> : <span className="inline-flex gap-2 items-center"><File size={18} className="shrink-0" />{item.name}</span>}</td>
+            <td className="p-3 whitespace-nowrap">{sizeLabel(item.size)}</td><td className="p-3 whitespace-nowrap">{new Date(item.modified_at).toLocaleString()}</td>
+            <td className="p-3"><div className="flex gap-3 whitespace-nowrap">
+              {item.kind === 'file' && <button disabled={disabled} aria-label={`下载 ${item.name}`} onClick={() => void perform(async () => {
+                transfer.current = new AbortController();
+                const blob = await storageApi.download(item.path, transfer.current.signal);
+                saveBlob(blob, item.name); setMessage('文件已接收，保存由浏览器或系统下载窗口处理。');
+              })}>下载</button>}
+              <button disabled={disabled} aria-label={`重命名 ${item.name}`} onClick={() => setForm({ kind: 'rename', path: item.path, name: item.name })}>重命名</button>
+              <button disabled={disabled} aria-label={`删除 ${item.name}`} onClick={() => setDeleting(item)}>删除</button>
+            </div></td>
+          </tr>)}</tbody>
+        </table></div>}
+    </>}
+  </section>;
+}
 export default StorageView;

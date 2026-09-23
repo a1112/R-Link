@@ -27,6 +27,10 @@ from api.system import router as system_router
 from api.plugin_sources import router as sources_router
 from api.auth import router as auth_router
 from api.devices import router as devices_router
+from api.storage import router as storage_router
+from api.services import router as services_router
+from api.mesh import router as mesh_router
+from core.services import Services
 from api.ssh import router as ssh_router
 from api.console import router as console_router, set_plugin_manager as set_console_plugin_manager
 
@@ -66,9 +70,13 @@ async def lifespan(app: FastAPI):
     plugins = plugin_manager.get_all_plugins()
     logger.info(f"Loaded {len(plugins)} plugins: {[p.name for p in plugins]}")
 
+    services = Services()
+    app.state.services = services
     try:
+        await services.start()
         yield
     finally:
+        await services.close()
         from api.ssh import active_connections
         for connection in list(active_connections.values()):
             await connection.close()
@@ -96,6 +104,9 @@ app.add_middleware(
 # 注册路由
 app.include_router(auth_router)
 app.include_router(devices_router)
+app.include_router(storage_router)
+app.include_router(services_router)
+app.include_router(mesh_router)
 app.include_router(plugins_router)
 app.include_router(system_router)
 app.include_router(sources_router)

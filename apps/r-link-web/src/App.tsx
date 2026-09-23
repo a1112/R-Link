@@ -9,9 +9,11 @@ import { MainLayout } from "./components/layout";
 import { TopologyView } from "./components/TopologyView";
 import { DashboardView } from "./components/DashboardView";
 import { PluginsView } from "./components/PluginsView";
+import { NetworkMonitor } from './components/NetworkMonitor';
 
 const RemoteView = React.lazy(() => import('./components/pages/RemoteView'));
 const FRPView = React.lazy(() => import('./components/pages/FRPView'));
+const MeshView = React.lazy(() => import('./components/pages/MeshView'));
 const DomainView = React.lazy(() => import('./components/pages/DomainView'));
 const StorageView = React.lazy(() => import('./components/pages/StorageView'));
 const SSHView = React.lazy(() => import('./components/pages/SSHView'));
@@ -36,7 +38,12 @@ export default function App() {
     let active = true;
     const unlisten = listen<string>('desktop-action', event => {
       if (!active) return;
+      if (event.payload !== 'settings') window.dispatchEvent(new Event('r-link-close-settings'));
       if (event.payload === 'devices') setActiveTab('remote');
+      if (event.payload === 'dashboard') setActiveTab('dashboard');
+      if (event.payload === 'network') setActiveTab('network');
+      if (event.payload === 'plugins') setActiveTab('plugins');
+      if (event.payload === 'storage') setActiveTab('storage');
       if (event.payload === 'ssh') setActiveTab('ssh');
       if (event.payload === 'settings') window.dispatchEvent(new Event('r-link-open-settings'));
     });
@@ -46,7 +53,9 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <DashboardView />;
-      case 'network': return <TopologyView />;
+      case 'analytics': return <NetworkMonitor />;
+      case 'network': return <TopologyView onDevices={() => setActiveTab('remote')} onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} />;
+      case 'mesh': return <MeshView />;
       case 'plugins': return <PluginsView />;
       case 'remote': return <RemoteView onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} />;
       case 'frp': return <FRPView />;

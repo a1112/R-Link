@@ -131,24 +131,11 @@ class TTYDManager:
             return False
 
     def is_running(self) -> bool:
-        """检查 ttyd 是否正在运行"""
-        # 检查 PID 文件
-        if self.pid_file.exists():
-            try:
-                with open(self.pid_file, 'r') as f:
-                    pid = int(f.read().strip())
-                # 检查进程是否存在
-                try:
-                    os.kill(pid, 0)
-                    return True
-                except OSError:
-                    # 进程不存在，清理 PID 文件
-                    self.pid_file.unlink()
-            except (ValueError, OSError):
-                pass
+        """Only a child we own proves this console is running.
 
-        # 检查端口是否被占用
-        return not self._is_port_available(self.ttyd_port)
+        A busy port or an old PID can belong to an unrelated application.
+        """
+        return self.process is not None and self.process.poll() is None
 
     def start(self) -> Dict[str, Any]:
         """启动 ttyd 服务"""
@@ -156,7 +143,7 @@ class TTYDManager:
             return {
                 "success": True,
                 "message": "ttyd is already running",
-                "pid": self._read_pid(),
+                "pid": self.process.pid,
             }
 
         # 查找 ttyd.exe
@@ -241,28 +228,16 @@ class TTYDManager:
             }
 
         try:
-            # 读取 PID
-            if self.pid_file.exists():
-                with open(self.pid_file, 'r') as f:
-                    pid = int(f.read().strip())
-
-                # 终止进程
-                if sys.platform == "win32":
-                    subprocess.run(["taskkill", "/F", "/PID", str(pid)],
-                                 capture_output=True)
-                else:
-                    os.kill(pid, signal.SIGTERM)
-
-                # 清理 PID 文件
-                self.pid_file.unlink()
-
-            # 如果有进程对象，也尝试终止
-            if self.process:
+            # Never terminate a PID taken from disk: it may have been reused.
+            if self.process and self.process.poll() is None:
                 self.process.terminate()
                 try:
                     self.process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     self.process.kill()
+                    self.process.wait(timeout=5)
+            if self.pid_file.exists():
+                self.pid_file.unlink()
 
             self.process = None
 
@@ -281,7 +256,9 @@ class TTYDManager:
 
     def restart(self) -> Dict[str, Any]:
         """重启 ttyd 服务"""
-        self.stop()
+        stopped = self.stop()
+        if not stopped.get("success"):
+            return stopped
         time.sleep(1)
         return self.start()
 
@@ -291,7 +268,7 @@ class TTYDManager:
 
         return {
             "running": running,
-            "pid": self._read_pid() if running else None,
+            "pid": self.process.pid if running else None,
             "port": self.ttyd_port,
             "command": self.command,
             "url": self.get_url() if running else None,
@@ -351,7 +328,8 @@ class Plugin:
     def stop(self) -> bool:
         """停止插件"""
         # 停止 ttyd 服务
-        self.ttyd.stop()
+        if not self.ttyd.stop().get("success"):
+            return False
         self.status = "stopped"
         return True
 
@@ -384,6 +362,8 @@ class Plugin:
 
     def set_config(self, config: Dict[str, Any]) -> bool:
         """设置配置"""
+        if self.ttyd.is_running():
+            raise ValueError("Stop the console before changing its configuration")
         self.config.update(config)
         # 更新 ttyd 管理器配置
         self.ttyd = TTYDManager(self.plugin_dir, self.config)

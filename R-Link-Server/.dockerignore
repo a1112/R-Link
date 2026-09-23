@@ -1,0 +1,13 @@
+data
+shared
+config
+logs
+plugins
+__pycache__
+**/__pycache__
+**/build
+**/*.exe
+**/*.pyc
+test_*.py
+conftest.py
+.env

@@ -1,0 +1,39 @@
+services:
+  server:
+    build: ../R-Link-Server
+    init: true
+    restart: unless-stopped
+    environment:
+      R_LINK_API_TOKEN: ${R_LINK_API_TOKEN:?Set a random service key in deploy/.env}
+      R_LINK_CORS_ORIGINS: ${R_LINK_CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+      R_LINK_FRPC_BINARY: /opt/rlink/bin/frpc
+      R_LINK_CADDY_BINARY: /opt/rlink/bin/caddy
+      R_LINK_FRP_TOKEN: ${R_LINK_FRP_TOKEN:-}
+      R_LINK_CLOUDFLARE_TOKEN: ${R_LINK_CLOUDFLARE_TOKEN:-}
+      R_LINK_ACME_STAGING: ${R_LINK_ACME_STAGING:-false}
+      R_LINK_NETBIRD_URL: ${R_LINK_NETBIRD_URL:-}
+      R_LINK_NETBIRD_TOKEN: ${R_LINK_NETBIRD_TOKEN:-}
+    volumes:
+      - rlink-data:/data
+      - rlink-config:/app/config
+      - rlink-plugins:/app/plugins
+      - rlink-logs:/app/logs
+      - ../binaries:/opt/rlink/bin:ro
+    ports:
+      - "127.0.0.1:8210:8210"
+    stop_grace_period: 60s
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "${R_LINK_WEB_BIND:-127.0.0.1}:8080:80"
+volumes:
+  rlink-data:
+  rlink-config:
+  rlink-plugins:
+  rlink-logs:

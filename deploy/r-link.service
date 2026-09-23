@@ -1,0 +1,21 @@
+[Unit]
+Description=R-Link management server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rlink
+Group=rlink
+WorkingDirectory=/opt/r-link/R-Link-Server
+EnvironmentFile=/etc/r-link.env
+ExecStart=/opt/r-link/.venv/bin/python /opt/r-link/R-Link-Server/main.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+UMask=0077
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -21,8 +21,13 @@ export function MainLayout({ activeRoute, onRouteChange, currentTheme = 'zinc', 
   const [showTerms, setShowTerms] = useState(false);
   useEffect(() => {
     const open = () => setShowSettings(true);
+    const close = () => setShowSettings(false);
     window.addEventListener('r-link-open-settings', open);
-    return () => window.removeEventListener('r-link-open-settings', open);
+    window.addEventListener('r-link-close-settings', close);
+    return () => {
+      window.removeEventListener('r-link-open-settings', open);
+      window.removeEventListener('r-link-close-settings', close);
+    };
   }, []);
   return <div className="flex w-full h-full">
     <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} activeRoute={activeRoute} onRouteChange={onRouteChange} />

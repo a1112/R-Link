@@ -28,7 +28,11 @@ export function DesktopSettings() {
           finally { setSaving(false); }
         }} />
     </label>
-    <p className="text-[var(--c-500)]">隐藏窗口保留当前连接。单击托盘图标可恢复窗口；右键菜单可打开设备管理、SSH、设置，或退出 R-Link。</p>
+    <p className="text-[var(--c-500)]">隐藏窗口保留当前连接。单击托盘图标可恢复窗口；右键菜单可打开仪表盘、设备管理、设备连接视图、SSH、共享文件、插件管理和设置，或退出 R-Link。</p>
+    <button className="rounded border px-3 py-2" disabled={!preferences?.tray_available || saving} onClick={async () => {
+      setError('');
+      try { await invoke('hide_to_tray'); } catch (e) { setError(String(e)); }
+    }}>立即隐藏到托盘</button>
     <p className="text-[var(--c-500)]">退出会断开本客户端终端连接；独立运行的服务端和网络插件继续运行。</p>
     {preferences && !preferences.tray_available && <p role="status">系统托盘不可用，关闭窗口将退出应用。</p>}
     {error && <p role="alert" className="text-red-400">{error}</p>}

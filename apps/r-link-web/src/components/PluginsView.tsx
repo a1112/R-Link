@@ -125,7 +125,6 @@ const PluginCard: React.FC<{
 };
 
 export const PluginsView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("installed");
   const [selectedPlugin, setSelectedPlugin] = useState<PluginUI | null>(null);
 
   // 使用 API Hooks
@@ -185,27 +184,7 @@ export const PluginsView: React.FC = () => {
           <h2 className="text-xl font-bold text-[var(--c-100)] tracking-tight">插件管理</h2>
           <p className="text-[var(--c-500)] text-sm">管理和控制系统插件</p>
         </div>
-        <div className="flex gap-2 bg-[var(--c-900)] p-1 rounded-lg border border-[var(--c-800)]">
-          <button
-            onClick={() => setActiveTab("installed")}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              activeTab === "installed"
-                ? "bg-[var(--c-800)] text-[var(--c-100)] shadow-sm"
-                : "text-[var(--c-500)] hover:text-[var(--c-300)]"
-            }`}
-          >
-            已安装 ({installedPlugins.length})
-          </button>
-          <button
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              activeTab === "market"
-                ? "bg-[var(--c-800)] text-[var(--c-100)] shadow-sm"
-                : "text-[var(--c-500)] hover:text-[var(--c-300)]"
-            }`}
-          >
-            插件市场
-          </button>
-        </div>
+        <button className="rounded border px-3 py-2 text-sm" onClick={() => void refetch()}>刷新插件</button>
       </div>
 
       {loading ? (
@@ -238,15 +217,8 @@ export const PluginsView: React.FC = () => {
       <AnimatePresence>
         {selectedPlugin && (
           <PluginDetailModal
-            plugin={{
-              ...selectedPlugin,
-              icon: Puzzle,
-              status: "installed",
-              features: selectedPlugin.features || [],
-              rating: selectedPlugin.rating,
-              downloads: selectedPlugin.downloads || '0',
-              verified: selectedPlugin.verified || false,
-            }}
+            key={selectedPlugin.name}
+            plugin={selectedPlugin}
             onClose={() => setSelectedPlugin(null)}
             onUninstall={async () => {
               try {

@@ -5,9 +5,9 @@ import { DesktopSettings } from './DesktopSettings';
 
 import { ServiceAccessSettings } from './ServiceAccessSettings';
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Settings, Shield, Globe, Monitor, CheckCircle2 } from "lucide-react";
-import { themes, getThemeStyles, type ThemeName } from "@/constants/theme";
+import { motion } from "framer-motion";
+import { X, Settings, Shield, Monitor, CheckCircle2 } from "lucide-react";
+import { themes, type ThemeName } from "@/constants/theme";
 
 export interface SettingsModalProps {
   /** 是否显示 */
@@ -20,12 +20,11 @@ export interface SettingsModalProps {
   onThemeChange: (theme: ThemeName) => void;
 }
 
-type SettingsTab = 'general' | 'access' | 'network' | 'display';
+type SettingsTab = 'general' | 'access' | 'display';
 
 const tabConfig: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "通用设置", icon: Settings },
   { id: "access", label: "服务访问", icon: Shield },
-  { id: "network", label: "网络配置", icon: Globe },
   { id: "display", label: "界面显示", icon: Monitor },
 ];
 
@@ -35,7 +34,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   currentTheme,
   onThemeChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("display");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   if (!show) return null;
 
@@ -83,6 +82,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </h3>
             <button
               onClick={onClose}
+              aria-label="关闭设置"
               className="p-1.5 text-[var(--c-500)] hover:text-[var(--c-200)] hover:bg-[var(--c-800)] rounded-lg transition-colors"
             >
               <X size={18} />
@@ -124,30 +124,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
 
-                <div className="space-y-4 pt-4 border-t border-[var(--c-800-50)]">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-medium text-[var(--c-200)]">界面缩放</div>
-                      <div className="text-xs text-[var(--c-500)]">调整应用程序的显示比例</div>
-                    </div>
-                    <select className="bg-[var(--c-900)] border border-[var(--c-800)] text-[var(--c-300)] text-xs rounded-lg px-2 py-1 outline-none focus:border-[var(--c-700)]">
-                      <option>100%</option>
-                      <option>110%</option>
-                      <option>125%</option>
-                    </select>
-                  </div>
-                </div>
+
               </div>
             )}
 
-            {activeTab === "network" && (
-              <div className="flex flex-col items-center justify-center h-full text-[var(--c-500)] space-y-4">
-                <div className="w-16 h-16 rounded-full bg-[var(--c-800-50)] flex items-center justify-center">
-                  <Globe size={32} className="opacity-20" />
-                </div>
-                <p className="text-sm">该模块配置项正在开发中...</p>
-              </div>
-            )}
+
           </div>
         </div>
       </motion.div>

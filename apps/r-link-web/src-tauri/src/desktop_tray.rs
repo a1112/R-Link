@@ -34,6 +34,13 @@ pub fn desktop_preferences(app: AppHandle) -> Result<Preferences, String> {
     Ok(preferences)
 }
 #[tauri::command]
+pub fn hide_to_tray(app: AppHandle) -> Result<(), String> {
+    if !desktop_preferences(app.clone())?.tray_available {
+        return Err("系统托盘不可用，无法隐藏窗口".into());
+    }
+    app.get_webview_window("main").ok_or("主窗口不可用")?.hide().map_err(|e| e.to_string())
+}
+#[tauri::command]
 pub fn set_close_to_tray(app: AppHandle, enabled: bool) -> Result<Preferences, String> {
     let state = app.state::<DesktopState>();
     let mut preferences = state.preferences.lock().map_err(|e| e.to_string())?;
@@ -52,6 +59,10 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let path = directory.join("desktop.json");
     let mut preferences: Preferences = std::fs::read(&path).ok().and_then(|data| serde_json::from_slice(&data).ok()).unwrap_or_default();
     let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
+    let dashboard = MenuItem::with_id(app, "dashboard", "仪表盘", true, None::<&str>)?;
+    let network = MenuItem::with_id(app, "network", "设备连接视图", true, None::<&str>)?;
+    let plugins = MenuItem::with_id(app, "plugins", "插件管理", true, None::<&str>)?;
+    let storage = MenuItem::with_id(app, "storage", "共享文件", true, None::<&str>)?;
     let devices = MenuItem::with_id(app, "devices", "设备管理", true, None::<&str>)?;
     let ssh = MenuItem::with_id(app, "ssh", "SSH 终端", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "系统设置", true, None::<&str>)?;
@@ -59,7 +70,7 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let toggle = CheckMenuItem::with_id(app, "close-to-tray", "关闭窗口后驻留", true, preferences.close_to_tray, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出 R-Link", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&show, &devices, &ssh, &settings, &hide, &toggle, &separator, &quit])?;
+    let menu = Menu::with_items(app, &[&show, &dashboard, &devices, &network, &ssh, &storage, &plugins, &settings, &hide, &toggle, &separator, &quit])?;
     let mut tray = TrayIconBuilder::with_id("r-link-main")
         .tooltip("R-Link · 设备与网络管理")
         .menu(&menu).show_menu_on_left_click(false)
@@ -70,11 +81,11 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         })
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => show_main(app),
-            "devices" | "ssh" | "settings" => {
+            "dashboard" | "devices" | "network" | "ssh" | "storage" | "plugins" | "settings" => {
                 show_main(app);
                 let _ = app.emit_to("main", "desktop-action", event.id.as_ref());
             },
-            "hide" => { if let Some(window) = app.get_webview_window("main") { let _ = window.hide(); } },
+            "hide" => { let _ = hide_to_tray(app.clone()); },
             "close-to-tray" => {
                 if let Ok(current) = desktop_preferences(app.clone()) {
                     if let Err(error) = set_close_to_tray(app.clone(), !current.close_to_tray) {

@@ -183,7 +183,8 @@ class PythonPlugin:
 
             # 调用插件的 stop 方法
             if self.instance and hasattr(self.instance, 'stop') and callable(self.instance.stop):
-                self.instance.stop()
+                if self.instance.stop() is False:
+                    return False
 
             # 等待线程结束
             if self.thread and self.thread.is_alive():
@@ -200,7 +201,8 @@ class PythonPlugin:
     def restart(self) -> bool:
         """重启插件"""
         config = self.get_config()
-        self.stop()
+        if not self.stop():
+            return False
         return self.start(config)
 
     def get_info(self) -> PythonPluginInfo:
@@ -233,9 +235,10 @@ class PythonPlugin:
     def set_config(self, config: Dict[str, Any]) -> bool:
         """设置配置"""
         try:
-            self._save_config(config)
             if self.instance and hasattr(self.instance, 'set_config'):
-                self.instance.set_config(config)
+                if self.instance.set_config(config) is False:
+                    return False
+            self._save_config(config)
             return True
         except Exception as e:
             logger.error(f"Error setting config: {e}")

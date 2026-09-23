@@ -1,0 +1,13 @@
+.git
+.venv
+**/node_modules
+**/target
+**/dist
+**/build
+binaries
+R-Link-Server/data
+R-Link-Server/shared
+R-Link-Server/config
+R-Link-Server/logs
+deploy/.env
+**/.env.local

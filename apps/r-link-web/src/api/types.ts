@@ -36,7 +36,7 @@ export interface PluginStartRequest {
 export interface PluginLogsResponse {
   plugin: string;
   lines: number;
-  logs: string[];
+  logs: string | string[];
 }
 
 export interface PluginHealthResponse {

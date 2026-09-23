@@ -1,0 +1,9 @@
+# Optional public ingress for the managed Caddy instance.
+services:
+  server:
+    cap_add:
+      - NET_BIND_SERVICE
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
