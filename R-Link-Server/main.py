@@ -31,6 +31,7 @@ from api.storage import router as storage_router
 from api.services import router as services_router
 from api.mesh import router as mesh_router
 from core.services import Services
+from core.device_sync import DeviceSync
 from api.ssh import router as ssh_router
 from api.console import router as console_router, set_plugin_manager as set_console_plugin_manager
 
@@ -72,16 +73,24 @@ async def lifespan(app: FastAPI):
 
     services = Services()
     app.state.services = services
+    device_sync = DeviceSync(services.state)
+    app.state.device_sync = device_sync
     try:
         await services.start()
+        await device_sync.start()
         yield
     finally:
-        await services.close()
-        from api.ssh import active_connections
-        for connection in list(active_connections.values()):
-            await connection.close()
-        logger.info("Shutting down R-Link-Server...")
-        plugin_manager.cleanup()
+        try:
+            await device_sync.close()
+        finally:
+            try:
+                await services.close()
+            finally:
+                from api.ssh import active_connections
+                for connection in list(active_connections.values()):
+                    await connection.close()
+                logger.info("Shutting down R-Link-Server...")
+                plugin_manager.cleanup()
 
 
 # 创建 FastAPI 应用
