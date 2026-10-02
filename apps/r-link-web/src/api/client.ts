@@ -13,10 +13,10 @@ export interface RequestConfig extends RequestInit {
 }
 
 export class HttpClient {
-  private baseURL: string;
+  private baseURL: string | undefined;
   private defaultTimeout: number;
 
-  constructor(baseURL: string = API_CONFIG.baseURL, timeout: number = API_CONFIG.timeout) {
+  constructor(baseURL?: string, timeout: number = API_CONFIG.timeout) {
     this.baseURL = baseURL;
     this.defaultTimeout = timeout;
   }
@@ -25,7 +25,7 @@ export class HttpClient {
    * 构建完整 URL
    */
   private buildUrl(endpoint: string, params?: Record<string, string | number>): string {
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
+    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL ?? API_CONFIG.baseURL}${endpoint}`;
 
     if (!params) {
       return url;

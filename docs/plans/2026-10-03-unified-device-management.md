@@ -37,6 +37,8 @@ Files: modify apps/r-link-web/src/api/devices.ts, apps/r-link-web/src/components
 
 ## Task 3: Deployment and device installation
 
+Cloud-readiness additions discovered during execution: include the missing tracked deploy/nginx.conf and Docker COPY regression test; add a validated runtime service URL in settings so installed desktop clients can connect to the cloud without rebuilding. HTTP, downloads and SSH must all read the current URL, with per-origin keys and no copied credentials on an origin change. Remote addresses require HTTPS; loopback HTTP is allowed. The sample CORS list includes the standard Tauri origins.
+
 Files: create docs/device-management-20261003.md; modify README.md, R-Link-Server/README.md, deploy/.env.example and deploy/compose.yaml.
 
 1. Document existing Compose cloud deployment, NetBird control plane, server-only PAT, desktop/mobile/NAS/router official installation and gateway access.

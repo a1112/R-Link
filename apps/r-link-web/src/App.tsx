@@ -28,7 +28,11 @@ export default function App() {
   const [theme, setTheme] = useState<ThemeName>('zinc');
   const [accessRevision, setAccessRevision] = useState(0);
   useEffect(() => {
-    const refresh = () => setAccessRevision(value => value + 1);
+    const refresh = () => {
+      setSshTarget(null);
+      setSshVisited(false);
+      setAccessRevision(value => value + 1);
+    };
     window.addEventListener('r-link-service-access-changed', refresh);
     return () => window.removeEventListener('r-link-service-access-changed', refresh);
   }, []);

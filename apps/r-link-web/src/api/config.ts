@@ -2,11 +2,15 @@
  * API 客户端配置
  */
 
+import { getServiceUrl } from './service-url';
+
+const defaultBaseURL = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL ||
+  (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window ? 'http://127.0.0.1:8210' : '')).replace(/\/$/, '');
+
 export const API_CONFIG = {
   // 基础 URL 为空，因为 API_ENDPOINTS 已包含完整路径
   // 请求会通过 Vite 代理转发到后端
-  baseURL: (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL ||
-    (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window ? 'http://127.0.0.1:8210' : '')).replace(/\/$/, ''),
+  get baseURL() { return getServiceUrl() || defaultBaseURL; },
 
   // 请求超时时间 (毫秒)
   timeout: 30000,
