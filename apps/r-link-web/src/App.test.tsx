@@ -7,7 +7,7 @@ vi.mock('./components/TopologyView', () => ({ TopologyView: () => <p>Topology</p
 vi.mock('./components/pages/SSHView', () => ({ default: () => <input aria-label="SSH session marker" defaultValue="" /> }));
 import App from './App';
 
-afterEach(() => { cleanup(); sessionStorage.clear(); });
+afterEach(() => { cleanup(); sessionStorage.clear(); localStorage.clear(); });
 
 it('opens the dashboard immediately and offers service settings without an account flow', () => {
   render(<App />);
@@ -17,7 +17,7 @@ it('opens the dashboard immediately and offers service settings without an accou
   fireEvent.click(screen.getByRole('button', { name: '系统设置' }));
   fireEvent.click(screen.getByRole('button', { name: '服务访问' }));
   fireEvent.change(screen.getByLabelText('服务访问密钥'), { target: { value: 'service-key' } });
-  fireEvent.click(screen.getByRole('button', { name: '保存密钥' }));
+  fireEvent.click(screen.getByRole('button', { name: '保存连接' }));
   expect(getServiceKey()).toBe('service-key');
   fireEvent.click(screen.getByRole('button', { name: '清除密钥' }));
   expect(getServiceKey()).toBe('');
@@ -33,4 +33,22 @@ it('preserves the mounted SSH session while navigating to another management pag
   fireEvent.click(screen.getByRole('button', { name: 'SSH 终端' }));
   expect(screen.getByRole('textbox', { name: 'SSH session marker' })).toBe(marker);
   expect((marker as HTMLInputElement).value).toBe('live-session');
+});
+
+it('discards a background SSH session when the operator changes the service origin', async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'SSH 终端' }));
+  const previous = await screen.findByRole('textbox', { name: 'SSH session marker' });
+  fireEvent.change(previous, { target: { value: 'old-server-session' } });
+  fireEvent.click(screen.getByRole('button', { name: '仪表盘' }));
+  fireEvent.click(screen.getByRole('button', { name: '系统设置' }));
+  fireEvent.click(screen.getByRole('button', { name: '服务访问' }));
+  fireEvent.change(screen.getByLabelText('服务地址'), { target: { value: 'https://other.example.test' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存连接' }));
+  expect(screen.queryByRole('textbox', { name: 'SSH session marker', hidden: true })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '关闭设置' }));
+  fireEvent.click(screen.getByRole('button', { name: 'SSH 终端' }));
+  const current = await screen.findByRole('textbox', { name: 'SSH session marker' });
+  expect(current).not.toBe(previous);
+  expect((current as HTMLInputElement).value).toBe('');
 });
