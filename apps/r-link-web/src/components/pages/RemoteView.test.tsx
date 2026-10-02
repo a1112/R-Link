@@ -289,3 +289,46 @@ it('rejects invalid peer identities before sending an explicit link request', as
   expect((await screen.findByRole('alert')).textContent).toContain('peer ID');
   expect(devicesApi.link).not.toHaveBeenCalled();
 });
+
+it('requires clearing a gateway relationship before linking a child to a direct peer', async () => {
+  const child = { ...device, source: 'gateway' as const, gateway_id: 'router' };
+  vi.mocked(devicesApi.list).mockResolvedValue([child, { ...device, id: 'router', name: 'Router', source: 'netbird', peer_id: 'p-router' }]);
+  render(<RemoteView />);
+  await screen.findByRole('heading', { name: 'NAS' });
+  const card = within(screen.getByRole('heading', { name: 'NAS' }).closest('article')!);
+  expect(card.queryByRole('button', { name: '关联组网节点' })).toBeNull();
+  expect(card.getByText(/先解除网关关联/)).toBeTruthy();
+});
+
+it('shows the selected revoked gateway and preserves its identity during an unrelated edit', async () => {
+  const child = { ...device, source: 'gateway' as const, gateway_id: 'router', notes: 'Old note' };
+  const router = { ...device, id: 'router', name: 'Revoked Router', source: 'netbird' as const, peer_id: 'p-router', connection_status: 'revoked' as const };
+  vi.mocked(devicesApi.list).mockResolvedValue([child, router]);
+  vi.mocked(devicesApi.save).mockResolvedValue({ ...child, notes: 'New note' });
+  render(<RemoteView />);
+  await screen.findByRole('heading', { name: 'NAS' });
+  fireEvent.click(within(screen.getByRole('heading', { name: 'NAS' }).closest('article')!).getByRole('button', { name: '编辑' }));
+  const select = screen.getByLabelText('接入网关') as HTMLSelectElement;
+  expect(select.value).toBe('router');
+  expect(select.selectedOptions[0].textContent).toContain('已撤销');
+  expect(select.selectedOptions[0].disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText('备注'), { target: { value: 'New note' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存设备' }));
+  await waitFor(() => expect(devicesApi.save).toHaveBeenCalledWith(expect.objectContaining({ gateway_id: 'router', notes: 'New note' }), 'one', expect.any(AbortSignal)));
+});
+
+it('allows explicit removal when the current gateway is absent and no replacement is available', async () => {
+  const child = { ...device, source: 'gateway' as const, gateway_id: 'missing-router' };
+  vi.mocked(devicesApi.list).mockResolvedValue([child]);
+  vi.mocked(devicesApi.save).mockResolvedValue({ ...device, gateway_id: null });
+  render(<RemoteView />);
+  await screen.findByRole('heading', { name: 'NAS' });
+  fireEvent.click(screen.getByRole('button', { name: '编辑' }));
+  const select = screen.getByLabelText('接入网关') as HTMLSelectElement;
+  expect(select.value).toBe('missing-router');
+  expect(select.selectedOptions[0].textContent).toContain('不可用');
+  fireEvent.change(select, { target: { value: '' } });
+  expect(select.value).toBe('');
+  fireEvent.click(screen.getByRole('button', { name: '保存设备' }));
+  await waitFor(() => expect(devicesApi.save).toHaveBeenCalledWith(expect.objectContaining({ gateway_id: null }), 'one', expect.any(AbortSignal)));
+});

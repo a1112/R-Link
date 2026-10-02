@@ -92,6 +92,8 @@ export function RemoteView({ onSsh }: { onSsh?: (device: Device) => void }) {
     `${device.name} ${device.host} ${device.username} ${(device.tags ?? []).join(' ')} ${(device.mesh_groups ?? []).map(group => group.name).join(' ')}`.toLowerCase().includes(search.trim().toLowerCase())), [devices, search, status, typeFilter, platformFilter, tagFilter]);
   const tags = [...new Set(devices.flatMap(device => device.tags ?? []))].sort();
   const gateways = devices.filter(device => device.source === 'netbird' && device.connection_status !== 'revoked' && device.id !== editing);
+  const unavailableGatewayId = form?.gateway_id && !gateways.some(device => device.id === form.gateway_id) ? form.gateway_id : null;
+  const unavailableGateway = devices.find(device => device.id === unavailableGatewayId);
   const editingPeer = devices.find(device => device.id === editing)?.source === 'netbird';
   const updateDevice = (saved: Device) => setDevices(previous => [...previous.filter(item => item.id !== saved.id), saved]);
   const edit = (device?: Device) => {
@@ -206,7 +208,7 @@ export function RemoteView({ onSsh }: { onSsh?: (device: Device) => void }) {
         <label>标签（逗号分隔）<input className={inputStyle} maxLength={550} value={tagInput} onChange={e => setTagInput(e.target.value)} /></label>
         <label>访问方式<select className={inputStyle} value={form.access_mode} onChange={e => setForm({ ...form, access_mode: e.target.value as DeviceInput['access_mode'] })}><option value="ssh">SSH</option><option value="web">Web 服务</option><option value="none">仅管理设备</option></select></label>
         {form.access_mode === 'web' && <label>Web 协议<select className={inputStyle} value={form.web_scheme} onChange={e => setForm({ ...form, web_scheme: e.target.value as 'http' | 'https' })}><option value="https">HTTPS</option><option value="http">HTTP</option></select></label>}
-        <label>接入网关<select className={inputStyle} disabled={editingPeer} value={form.gateway_id ?? ''} onChange={e => setForm({ ...form, gateway_id: e.target.value || null })}><option value="">不关联网关</option>{gateways.map(device => <option key={device.id} value={device.id}>{device.name} · {connectionLabels[device.connection_status ?? 'unknown']}</option>)}</select></label>
+        <label>接入网关<select className={inputStyle} disabled={editingPeer} value={form.gateway_id ?? ''} onChange={e => setForm({ ...form, gateway_id: e.target.value || null })}><option value="">不关联网关</option>{unavailableGatewayId && <option value={unavailableGatewayId} disabled>当前网关：{unavailableGateway?.name ?? unavailableGatewayId} · {unavailableGateway?.connection_status === 'revoked' ? '已撤销（不可用）' : '不可用'}</option>}{gateways.map(device => <option key={device.id} value={device.id}>{device.name} · {connectionLabels[device.connection_status ?? 'unknown']}</option>)}</select></label>
         <label className="md:col-span-2">备注<textarea className={inputStyle} maxLength={500} rows={3} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></label>
       </fieldset>
       <p className="text-xs text-[var(--c-400)]">网关关联用于登记接入关系；路由及访问策略需在组网服务中配置。网关在线不代表子设备健康。连接时再提供密码或私钥。</p>
@@ -231,11 +233,12 @@ export function RemoteView({ onSsh }: { onSsh?: (device: Device) => void }) {
         {onSsh && deviceAccessMode(device) === 'ssh' && <button disabled={busy} onClick={() => onSsh(device)}>SSH 连接</button>}
         {!busy && deviceWebUrl(device) && <a href={deviceWebUrl(device)!} target="_blank" rel="noreferrer">打开 Web 服务</a>}
         <button disabled={busy} onClick={() => edit(device)}>编辑</button>
-        {device.source !== 'netbird' && <button disabled={busy || !management?.configured} onClick={() => { setLinking(device.id); setPeerId(''); }}>关联组网节点</button>}
+        {device.source !== 'netbird' && !device.gateway_id && <button disabled={busy || !management?.configured} onClick={() => { setLinking(device.id); setPeerId(''); }}>关联组网节点</button>}
         {device.source === 'netbird' && device.peer_id && device.connection_status !== 'revoked' && <button disabled={busy || !management?.configured} onClick={() => setRevoking(device.id)}>撤销入网</button>}
         <button disabled={busy} onClick={() => setDeleting(device.id)}>删除</button>
       </div>
-      {linking === device.id && <form className="text-sm space-y-2" onSubmit={event => { event.preventDefault(); void perform(async (signal, active) => {
+      {device.gateway_id && <p className="text-xs text-[var(--c-400)]">如需直接关联组网节点，请先解除网关关联。</p>}
+      {linking === device.id && device.source !== 'netbird' && !device.gateway_id && <form className="text-sm space-y-2" onSubmit={event => { event.preventDefault(); void perform(async (signal, active) => {
         if (!/^[A-Za-z0-9_-]{1,80}$/.test(peerId.trim())) throw new Error('peer ID 只能包含字母、数字、下划线及短横线，最多 80 个字符');
         const linked = await devicesApi.link(device.id, peerId.trim(), signal); if (active()) { updateDevice(linked); setLinking(undefined); setNotice('已关联指定组网节点。'); }
       }); }}><p>请输入已入网节点的 peer ID。明确关联会保留本地名称与标签，不按 IP 自动合并。</p><label>组网 peer ID<input className={inputStyle} required maxLength={80} value={peerId} disabled={busy} onChange={event => setPeerId(event.target.value)} /></label><button disabled={busy} type="submit" className="mr-3">确认关联</button><button type="button" disabled={busy} onClick={() => setLinking(undefined)}>取消关联</button></form>}
