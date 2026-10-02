@@ -3,10 +3,9 @@ import asyncio
 import time
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
-from starlette.concurrency import run_in_threadpool
 from core.auth import require_auth
 from core import devices
-from core.device_sync import onboarding
+from core.device_sync import onboarding, run_database
 
 router = APIRouter(prefix='/api/devices', tags=['devices'], dependencies=[Depends(require_auth)])
 _inflight: set[str] = set()
@@ -25,8 +24,8 @@ def list_devices():
 async def create_device(data: devices.DeviceInput, request: Request):
     sync = manager(request)
     async with sync.lock:
-        result = await run_in_threadpool(devices.save_device, data)
-        sync.audit('create', result['id'])
+        result = await run_database(devices.save_device, data,
+                                    on_success=lambda result: sync.audit('create', result['id']))
         return result
 
 
@@ -39,8 +38,8 @@ def export_devices(version: int = 1):
 async def import_devices(data: devices.DeviceInventory, request: Request):
     sync = manager(request)
     async with sync.lock:
-        result = await run_in_threadpool(devices.import_inventory, data)
-        sync.audit('import', 'inventory')
+        result = await run_database(devices.import_inventory, data,
+                                    on_success=lambda result: sync.audit('import', 'inventory'))
         return result
 
 
@@ -83,8 +82,8 @@ def get_device(device_id: str):
 async def update_device(device_id: str, data: devices.DeviceInput, request: Request):
     sync = manager(request)
     async with sync.lock:
-        result = await run_in_threadpool(devices.save_device, data, device_id)
-        sync.audit('update', device_id)
+        result = await run_database(devices.save_device, data, device_id,
+                                    on_success=lambda result: sync.audit('update', device_id))
         return result
 
 
@@ -92,8 +91,8 @@ async def update_device(device_id: str, data: devices.DeviceInput, request: Requ
 async def delete_device(device_id: str, request: Request):
     sync = manager(request)
     async with sync.lock:
-        await run_in_threadpool(devices.delete_device, device_id)
-        sync.audit('delete', device_id)
+        await run_database(devices.delete_device, device_id,
+                           on_success=lambda result: sync.audit('delete', device_id))
         return Response(status_code=204)
 
 
@@ -104,7 +103,11 @@ async def probe_device(device_id: str, request: Request = None):
     _inflight.add(device_id)
     writer = None
     try:
-        device = await run_in_threadpool(devices.read_device, device_id)
+        if request is not None:
+            async with manager(request).lock:
+                device = await run_database(devices.read_device, device_id)
+        else:
+            device = await run_database(devices.read_device, device_id)
         start = time.monotonic()
         try:
             _, writer = await asyncio.wait_for(asyncio.open_connection(device['host'], device['port']), timeout=3)
@@ -114,8 +117,8 @@ async def probe_device(device_id: str, request: Request = None):
         elapsed = round((time.monotonic() - start) * 1000, 2)
         if request is not None:
             async with manager(request).lock:
-                return await run_in_threadpool(devices.record_probe, device, reachable, elapsed)
-        return await run_in_threadpool(devices.record_probe, device, reachable, elapsed)
+                return await run_database(devices.record_probe, device, reachable, elapsed)
+        return await run_database(devices.record_probe, device, reachable, elapsed)
     finally:
         try:
             if writer:

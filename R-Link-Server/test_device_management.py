@@ -1,6 +1,7 @@
 """Unified inventory contracts, isolated from any production control plane."""
 import asyncio
 import sqlite3
+import threading
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -419,3 +420,123 @@ async def test_unexpected_sync_error_invalidates_old_mesh_observation(monkeypatc
     assert error.value.status_code == 502 and 'private' not in str(error.value.detail)
     assert devices.read_device(row['id'])['connection_status'] == 'unknown'
     assert sync.status()['last_error']
+
+
+def test_changed_ip_conflict_invalidates_online_and_old_tcp_observations(client, monkeypatch):
+    upstream = [peer()]
+    configure(monkeypatch, lambda request: httpx.Response(200, json=upstream))
+    client.post('/api/devices/sync')
+    bound = devices.list_devices()[0]
+    devices.record_probe(bound, True, 3.4)
+    manual = client.post('/api/devices', json={'name': 'manual', 'host': '100.100.1.2'}).json()
+    upstream[:] = [peer(ip='100.100.1.2')]
+    result = client.post('/api/devices/sync').json()
+    assert result['conflicts'][0]['device_id'] == manual['id']
+    conflicted = devices.read_device(bound['id'])
+    assert conflicted['connection_status'] == 'unknown'
+    assert conflicted['status'] == 'unchecked' and conflicted['checked_at'] is None and conflicted['latency_ms'] is None
+    assert conflicted['revision'] == bound['revision'] + 1
+    assert conflicted['host'] == bound['host']
+    assert devices.record_probe(bound, True, 1.0) == conflicted
+    assert devices.read_device(manual['id']) == manual
+
+
+@pytest.mark.asyncio
+async def test_close_waits_for_cancelled_background_database_worker(monkeypatch):
+    from core import device_sync as ds
+    monkeypatch.setenv('R_LINK_DEVICE_SYNC_INTERVAL', '60')
+    monkeypatch.setenv('R_LINK_NETBIRD_URL', 'https://mesh.example.test')
+    monkeypatch.setenv('R_LINK_NETBIRD_TOKEN', 'isolated')
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+    original = ds.apply_sync
+    def blocked(*args):
+        entered.set()
+        assert release.wait(5)
+        try:
+            return original(*args)
+        finally:
+            finished.set()
+    async def adapter(*args):
+        return [peer()]
+    events = []
+    class AuditState:
+        def audit(self, action, resource):
+            events.append((action, resource))
+    monkeypatch.setattr(ds, 'apply_sync', blocked)
+    monkeypatch.setattr(mesh.netbird, 'request', adapter)
+    sync = ds.DeviceSync(AuditState())
+    await sync.start()
+    assert await asyncio.to_thread(entered.wait, 2)
+    closing = asyncio.create_task(sync.close())
+    try:
+        await asyncio.sleep(0.05)
+        assert not closing.done()
+        assert sync.lock.locked() and sync.syncing and not finished.is_set()
+    finally:
+        release.set()
+        await closing
+    assert finished.is_set() and sync.task is None and not sync.syncing
+    assert not sync.lock.locked() and len(devices.list_devices()) == 1
+    assert ('devices.sync', 'inventory') in events
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('operation', ['link', 'revoke', 'probe'])
+async def test_cancelled_operation_waits_for_actual_database_work(monkeypatch, operation):
+    from core import device_sync as ds
+    from api import devices as api
+    from types import SimpleNamespace
+    monkeypatch.setenv('R_LINK_NETBIRD_URL', 'https://mesh.example.test')
+    monkeypatch.setenv('R_LINK_NETBIRD_TOKEN', 'isolated')
+    if operation == 'revoke':
+        ds.apply_sync(ds.validate_peers([peer()]), devices.current_provider())
+        row = devices.list_devices()[0]
+    else:
+        row = devices.save_device(devices.DeviceInput(name='manual', host='100.100.1.1'))
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+    owner, name = (devices, 'record_probe') if operation == 'probe' else (ds, 'apply_link' if operation == 'link' else 'mark_revoked')
+    original = getattr(owner, name)
+    def blocked(*args):
+        entered.set()
+        assert release.wait(5)
+        try:
+            return original(*args)
+        finally:
+            finished.set()
+    async def adapter(method, path):
+        return peer() if method == 'GET' else None
+    async def refused(*args):
+        raise OSError('isolated refusal')
+    monkeypatch.setattr(owner, name, blocked)
+    monkeypatch.setattr(mesh.netbird, 'request', adapter)
+    sync = ds.DeviceSync()
+    if operation == 'link':
+        running = asyncio.create_task(sync.link(row['id'], 'peer1'))
+    elif operation == 'revoke':
+        running = asyncio.create_task(sync.revoke(row['id']))
+    else:
+        monkeypatch.setattr(api.asyncio, 'open_connection', refused)
+        request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(device_sync=sync)))
+        running = asyncio.create_task(api.probe_device(row['id'], request))
+    assert await asyncio.to_thread(entered.wait, 2)
+    running.cancel()
+    closing = asyncio.create_task(sync.close())
+    try:
+        await asyncio.sleep(0.05)
+        running.cancel()  # A second cancellation must not abandon the worker.
+        await asyncio.sleep(0)
+        assert not running.done() and not closing.done()
+        assert sync.lock.locked() and not finished.is_set()
+    finally:
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await running
+        await closing
+    assert finished.is_set() and not sync.lock.locked()
+    updated = devices.read_device(row['id'])
+    if operation == 'link':
+        assert updated['source'] == 'netbird'
+    elif operation == 'revoke':
+        assert updated['connection_status'] == 'revoked'
+    else:
+        assert updated['status'] == 'unreachable'

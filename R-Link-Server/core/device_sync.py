@@ -16,6 +16,42 @@ from core.mesh import ID_RE, netbird, safe_id
 logger = logging.getLogger(__name__)
 
 
+async def run_database(function, *args, on_success=None):
+    """Keep the owning operation alive until its database thread really stops.
+
+    Cancelling a coroutine awaiting a threadpool does not stop the thread.
+    Shield the worker and drain it before propagating cancellation, so callers
+    retain their operation lock and lifecycle shutdown retains the service lock.
+    """
+    worker = asyncio.create_task(run_in_threadpool(function, *args))
+    cancelled = False
+    while True:
+        try:
+            result = await asyncio.shield(worker)
+            break
+        except asyncio.CancelledError:
+            if worker.cancelled():
+                raise
+            cancelled = True
+            if worker.done():
+                try:
+                    result = worker.result()
+                except Exception:
+                    raise asyncio.CancelledError from None
+                break
+        except Exception:
+            if cancelled:
+                raise asyncio.CancelledError from None
+            raise
+    # A cancelled request may have completed a durable mutation; record its
+    # audit before propagating cancellation or releasing the operation lock.
+    if on_success:
+        on_success(result)
+    if cancelled:
+        raise asyncio.CancelledError
+    return result
+
+
 class PeerGroup(BaseModel):
     model_config = ConfigDict(extra='ignore', str_strip_whitespace=True)
     id: str = Field(min_length=1, max_length=80)
@@ -120,6 +156,12 @@ def apply_sync(peers, provider):
             if endpoint and (not row or endpoint['id'] != row['id']):
                 summary['conflicts'].append({'peer_id': peer.id, 'device_id': endpoint['id'], 'host': peer.ip,
                                             'port': endpoint['port'], 'reason': 'endpoint_already_registered'})
+                if row:
+                    # A conflicting new address cannot replace either row, but
+                    # the old address and successful TCP check are now obsolete.
+                    db.execute("""UPDATE devices SET connection_status='unknown',
+                        synced_at=?,revision=revision+1,status='unchecked',
+                        checked_at=NULL,latency_ms=NULL WHERE id=?""", (stamp, row['id']))
                 continue
             if row:
                 update_peer(db, dict(row), peer, provider, stamp)
@@ -201,15 +243,15 @@ class DeviceSync:
             try:
                 payload = await netbird.request('GET', '/api/peers')
                 peers = validate_peers(payload)
-                result = await run_in_threadpool(apply_sync, peers, provider)
-                self.audit('sync', 'inventory')
+                result = await run_database(apply_sync, peers, provider,
+                                            on_success=lambda result: self.audit('sync', 'inventory'))
                 return result
             except HTTPException:
-                await run_in_threadpool(mark_failed, provider)
+                await run_database(mark_failed, provider)
                 self.audit('sync.failed', 'inventory')
                 raise
             except Exception:
-                await run_in_threadpool(mark_failed, provider)
+                await run_database(mark_failed, provider)
                 self.audit('sync.failed', 'inventory')
                 raise HTTPException(502, '设备同步失败，请检查 NetBird 管理连接') from None
             finally:
@@ -225,8 +267,8 @@ class DeviceSync:
             peers = validate_peers([payload])
             if peers[0].id != peer_id:
                 raise HTTPException(502, 'NetBird 节点响应编号不匹配')
-            result = await run_in_threadpool(apply_link, device_id, peers[0], provider)
-            self.audit('link', device_id)
+            result = await run_database(apply_link, device_id, peers[0], provider,
+                                        on_success=lambda result: self.audit('link', device_id))
             return result
 
     async def revoke(self, device_id):
@@ -241,10 +283,13 @@ class DeviceSync:
             try:
                 await netbird.request('DELETE', '/api/peers/' + safe_id(row['peer_id']))
             except HTTPException as exc:
+                # The current binding was verified locally before DELETE. A 404
+                # means that peer already has no network membership to revoke;
+                # only this absence is idempotent success, never other errors.
                 if exc.status_code != 404:
                     raise
-            result = await run_in_threadpool(mark_revoked, device_id, provider)
-            self.audit('revoke', device_id)
+            result = await run_database(mark_revoked, device_id, provider,
+                                        on_success=lambda result: self.audit('revoke', device_id))
             return result
 
     async def start(self):
@@ -260,7 +305,7 @@ class DeviceSync:
                     logger.warning('NetBird device synchronization failed')
                 except Exception:
                     # Background failures must not kill lifecycle cleanup or leak upstream data.
-                    await run_in_threadpool(mark_failed, devices.current_provider())
+                    await run_database(mark_failed, devices.current_provider())
                     logger.warning('Unexpected device synchronization failure')
             await asyncio.sleep(self.interval)
 
@@ -270,6 +315,10 @@ class DeviceSync:
             with suppress(asyncio.CancelledError):
                 await self.task
             self.task = None
+        # Manual API operations can still own a database worker even when no
+        # background task is scheduled. Drain their operation lock as well.
+        async with self.lock:
+            pass
 
 
 def onboarding():
