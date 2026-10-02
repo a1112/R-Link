@@ -3,6 +3,7 @@ import { Monitor, Server } from 'lucide-react';
 import { devicesApi, type Device } from '../api/devices';
 import { usePolling } from '../api/usePolling';
 import { useSystemInfo } from '../api/hooks';
+import { connectionLabels, deviceAccessMode, deviceWebUrl, sourceLabels } from './device-presentation';
 
 export function TopologyView({ onDevices, onSsh }: { onDevices?: () => void; onSsh?: (device: Device) => void }) {
   const { data: devices, error, loading, refetch } = usePolling(useCallback((signal: AbortSignal) => devicesApi.list(signal), []), 5000);
@@ -25,9 +26,13 @@ export function TopologyView({ onDevices, onSsh }: { onDevices?: () => void; onS
           <article className="rounded-xl border border-[var(--c-800)] bg-[var(--c-900)] p-5 space-y-2">
             <Monitor size={20} /><h3 className="font-semibold">{device.name}</h3>
             <p className="font-mono text-sm break-all">{device.host.includes(':') ? `[${device.host}]` : device.host}:{device.port}</p>
+            <p className="text-xs text-[var(--c-400)]">{sourceLabels[device.source ?? 'manual']}</p>
+            <p>组网状态：{connectionLabels[device.connection_status ?? 'unknown']}</p>
+            {device.source === 'gateway' && <><p>网关状态：{connectionLabels[device.gateway_status ?? 'unknown']}</p><p className="text-xs text-[var(--c-400)]">网关在线不代表此设备在线或服务正常。</p></>}
             <p className={device.status === 'reachable' ? 'text-emerald-400' : 'text-[var(--c-400)]'}>{device.status === 'unchecked' ? '尚未检测' : device.status === 'reachable' ? '上次检测：端口可达' : '上次检测：端口不可达'}</p>
             {device.checked_at && <p className="text-xs text-[var(--c-500)]">{new Date(device.checked_at).toLocaleString()}{device.latency_ms !== null ? ` · ${device.latency_ms} ms` : ''}</p>}
-            {onSsh && <button className="text-sm underline" onClick={() => onSsh(device)}>SSH 连接</button>}
+            {onSsh && deviceAccessMode(device) === 'ssh' && <button className="text-sm underline" onClick={() => onSsh(device)}>SSH 连接</button>}
+            {deviceWebUrl(device) && <a className="text-sm underline" href={deviceWebUrl(device)!} target="_blank" rel="noreferrer">打开 Web 服务</a>}
           </article>
         </div>)}</div>}
     </>}
