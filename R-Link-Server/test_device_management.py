@@ -540,3 +540,42 @@ async def test_cancelled_operation_waits_for_actual_database_work(monkeypatch, o
         assert updated['connection_status'] == 'revoked'
     else:
         assert updated['status'] == 'unreachable'
+
+
+@pytest.mark.asyncio
+async def test_cancelled_sync_capacity_failure_invalidates_old_observation(monkeypatch):
+    from core import device_sync as ds
+    monkeypatch.setenv('R_LINK_NETBIRD_URL', 'https://mesh.example.test')
+    monkeypatch.setenv('R_LINK_NETBIRD_TOKEN', 'isolated')
+    ds.apply_sync(ds.validate_peers([peer()]), devices.current_provider())
+    row = devices.list_devices()[0]
+    with devices.database() as db:
+        db.executemany('INSERT INTO devices(id,name,host,port,username) VALUES(?,?,?,?,?)', [(str(i), str(i), f'host{i}.local', 22, '') for i in range(255)])
+    entered, release = threading.Event(), threading.Event()
+    original = ds.apply_sync
+    def blocked(*args):
+        entered.set()
+        assert release.wait(5)
+        return original(*args)
+    async def adapter(*args):
+        return [peer(connected=False), peer('overflow', '100.100.1.2')]
+    events = []
+    class AuditState:
+        def audit(self, action, resource):
+            events.append((action, resource))
+    monkeypatch.setattr(ds, 'apply_sync', blocked)
+    monkeypatch.setattr(mesh.netbird, 'request', adapter)
+    sync = ds.DeviceSync(AuditState())
+    running = asyncio.create_task(sync.sync())
+    assert await asyncio.to_thread(entered.wait, 2)
+    running.cancel()
+    await asyncio.sleep(0)
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await running
+    assert devices.read_device(row['id'])['connection_status'] == 'unknown'
+    assert sync.status()['last_error']
+    assert ('devices.sync.failed', 'inventory') in events
+    assert len(devices.list_devices()) == 256
+    assert not any(item['peer_id'] == 'overflow' for item in devices.list_devices())
+    assert not sync.lock.locked() and not sync.syncing

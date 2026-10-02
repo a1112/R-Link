@@ -16,7 +16,7 @@ from core.mesh import ID_RE, netbird, safe_id
 logger = logging.getLogger(__name__)
 
 
-async def run_database(function, *args, on_success=None):
+async def run_database(function, *args, on_success=None, on_cancelled_failure=None):
     """Keep the owning operation alive until its database thread really stops.
 
     Cancelling a coroutine awaiting a threadpool does not stop the thread.
@@ -27,22 +27,26 @@ async def run_database(function, *args, on_success=None):
     cancelled = False
     while True:
         try:
-            result = await asyncio.shield(worker)
+            await asyncio.shield(worker)
             break
         except asyncio.CancelledError:
             if worker.cancelled():
                 raise
             cancelled = True
             if worker.done():
-                try:
-                    result = worker.result()
-                except Exception:
-                    raise asyncio.CancelledError from None
                 break
         except Exception:
-            if cancelled:
-                raise asyncio.CancelledError from None
-            raise
+            break
+    try:
+        result = worker.result()
+    except Exception:
+        if cancelled:
+            # Cancellation must not hide a real transaction failure from sync
+            # health. Complete failure cleanup while the operation lock is held.
+            if on_cancelled_failure:
+                await on_cancelled_failure()
+            raise asyncio.CancelledError from None
+        raise
     # A cancelled request may have completed a durable mutation; record its
     # audit before propagating cancellation or releasing the operation lock.
     if on_success:
@@ -240,11 +244,15 @@ class DeviceSync:
             if not provider:
                 raise HTTPException(503, '请设置 R_LINK_NETBIRD_URL 和 R_LINK_NETBIRD_TOKEN')
             self.syncing = True
+            async def cancelled_failure():
+                await run_database(mark_failed, provider,
+                    on_success=lambda result: self.audit('sync.failed', 'inventory'))
             try:
                 payload = await netbird.request('GET', '/api/peers')
                 peers = validate_peers(payload)
                 result = await run_database(apply_sync, peers, provider,
-                                            on_success=lambda result: self.audit('sync', 'inventory'))
+                    on_success=lambda result: self.audit('sync', 'inventory'),
+                    on_cancelled_failure=cancelled_failure)
                 return result
             except HTTPException:
                 await run_database(mark_failed, provider)
