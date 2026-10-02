@@ -13,6 +13,8 @@ services:
       R_LINK_ACME_STAGING: ${R_LINK_ACME_STAGING:-false}
       R_LINK_NETBIRD_URL: ${R_LINK_NETBIRD_URL:-}
       R_LINK_NETBIRD_TOKEN: ${R_LINK_NETBIRD_TOKEN:-}
+      R_LINK_DEVICE_SYNC_INTERVAL: ${R_LINK_DEVICE_SYNC_INTERVAL:-60}
+      R_LINK_DEVICE_STALE_SECONDS: ${R_LINK_DEVICE_STALE_SECONDS:-180}
     volumes:
       - rlink-data:/data
       - rlink-config:/app/config
