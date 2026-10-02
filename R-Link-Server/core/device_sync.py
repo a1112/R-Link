@@ -16,14 +16,8 @@ from core.mesh import ID_RE, netbird, safe_id
 logger = logging.getLogger(__name__)
 
 
-async def run_database(function, *args, on_success=None, on_cancelled_failure=None):
-    """Keep the owning operation alive until its database thread really stops.
-
-    Cancelling a coroutine awaiting a threadpool does not stop the thread.
-    Shield the worker and drain it before propagating cancellation, so callers
-    retain their operation lock and lifecycle shutdown retains the service lock.
-    """
-    worker = asyncio.create_task(run_in_threadpool(function, *args))
+async def drain_task(worker, on_success=None, on_cancelled_failure=None):
+    """Wait for actual completion before propagating even repeated cancellation."""
     cancelled = False
     while True:
         try:
@@ -54,6 +48,12 @@ async def run_database(function, *args, on_success=None, on_cancelled_failure=No
     if cancelled:
         raise asyncio.CancelledError
     return result
+
+
+async def run_database(function, *args, on_success=None, on_cancelled_failure=None):
+    """Shield database threads so cancellation cannot release their owner's lock."""
+    worker = asyncio.create_task(run_in_threadpool(function, *args))
+    return await drain_task(worker, on_success, on_cancelled_failure)
 
 
 class PeerGroup(BaseModel):
@@ -223,6 +223,7 @@ class DeviceSync:
         self.lock = asyncio.Lock()
         self.interval = devices.integer_setting('R_LINK_DEVICE_SYNC_INTERVAL', 60)
         self.task = None
+        self._close_task = None
         self.syncing = False
         self.audit_state = audit_state
 
@@ -301,6 +302,7 @@ class DeviceSync:
             return result
 
     async def start(self):
+        self._close_task = None
         if self.interval:
             self.task = asyncio.create_task(self._run(), name='device-sync')
 
@@ -318,15 +320,24 @@ class DeviceSync:
             await asyncio.sleep(self.interval)
 
     async def close(self):
-        if self.task:
-            self.task.cancel()
-            with suppress(asyncio.CancelledError):
-                await self.task
+        if self._close_task is None:
+            self._close_task = asyncio.create_task(self._drain_close(), name='device-sync-close')
+        # Shutdown itself can be cancelled by lifecycle teardown. Its entire
+        # cleanup must finish before main releases the process-wide service lock.
+        await drain_task(self._close_task)
+
+    async def _drain_close(self):
+        try:
+            if self.task:
+                self.task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await self.task
+        finally:
             self.task = None
-        # Manual API operations can still own a database worker even when no
-        # background task is scheduled. Drain their operation lock as well.
-        async with self.lock:
-            pass
+            # Manual API operations can own a worker with no background task.
+            # Drain their lock even if the background task ended with an error.
+            async with self.lock:
+                pass
 
 
 def onboarding():

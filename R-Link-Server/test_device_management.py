@@ -579,3 +579,81 @@ async def test_cancelled_sync_capacity_failure_invalidates_old_observation(monke
     assert len(devices.list_devices()) == 256
     assert not any(item['peer_id'] == 'overflow' for item in devices.list_devices())
     assert not sync.lock.locked() and not sync.syncing
+
+
+def test_direct_peer_host_edit_is_rejected_without_changing_identity_or_observation(client, monkeypatch):
+    configure(monkeypatch, lambda request: httpx.Response(200, json=[peer()]))
+    client.post('/api/devices/sync')
+    bound = devices.list_devices()[0]
+    before = devices.record_probe(bound, True, 1.2)
+    response = client.put('/api/devices/' + bound['id'], json={'name': 'edited', 'host': 'other.local', 'port': 2222, 'username': 'new', 'tags': ['changed']})
+    assert response.status_code == 409
+    assert devices.read_device(bound['id']) == before
+
+
+def test_direct_peer_normalized_original_host_and_service_edits_remain_compatible(client, monkeypatch):
+    configure(monkeypatch, lambda request: httpx.Response(200, json=[peer(ip='2001:db8::1')]))
+    client.post('/api/devices/sync')
+    bound = devices.list_devices()[0]
+    response = client.put('/api/devices/' + bound['id'], json={'name': 'local', 'host': '2001:0DB8:0:0:0:0:0:1', 'port': 2222, 'username': 'admin', 'notes': 'keep', 'access_mode': 'ssh'})
+    assert response.status_code == 200
+    changed = response.json()
+    assert changed['host'] == '2001:db8::1' and changed['peer_id'] == bound['peer_id']
+    assert changed['connection_status'] == 'online' and changed['name'] == 'local'
+    assert changed['port'] == 2222 and changed['username'] == 'admin' and changed['notes'] == 'keep'
+
+
+def test_manual_and_gateway_child_hosts_remain_editable(client, monkeypatch):
+    configure(monkeypatch, lambda request: httpx.Response(200, json=[peer()]))
+    client.post('/api/devices/sync')
+    gateway = devices.list_devices()[0]
+    for gateway_id in (None, gateway['id']):
+        host = 'manual.local' if gateway_id is None else 'child.local'
+        row = client.post('/api/devices', json={'name': host, 'host': host, 'gateway_id': gateway_id}).json()
+        response = client.put('/api/devices/' + row['id'], json={'name': host, 'host': 'new.' + host})
+        assert response.status_code == 200
+        assert response.json()['host'] == 'new.' + host
+        assert response.json()['gateway_id'] == gateway_id
+
+
+@pytest.mark.asyncio
+async def test_cancelled_lifecycle_close_keeps_service_lock_until_manual_worker_finishes(monkeypatch):
+    import main
+    from core import device_sync as ds
+    from types import SimpleNamespace
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+    def blocked():
+        entered.set()
+        assert release.wait(5)
+        finished.set()
+    fake_app = SimpleNamespace(state=SimpleNamespace())
+    body_entered, body_release = asyncio.Event(), asyncio.Event()
+    async def lifecycle():
+        async with main.lifespan(fake_app):
+            body_entered.set()
+            await body_release.wait()
+    lifetime = asyncio.create_task(lifecycle())
+    await asyncio.wait_for(body_entered.wait(), 2)
+    sync = fake_app.state.device_sync
+    async def operation():
+        async with sync.lock:
+            await ds.run_database(blocked)
+    running = asyncio.create_task(operation())
+    assert await asyncio.to_thread(entered.wait, 2)
+    body_release.set()
+    await asyncio.sleep(0.05)
+    lifetime.cancel()
+    await asyncio.sleep(0.05)
+    lifetime.cancel()
+    try:
+        await asyncio.sleep(0.05)
+        assert not lifetime.done()
+        assert fake_app.state.services.owns_lock
+        assert sync.lock.locked() and not finished.is_set()
+    finally:
+        release.set()
+        await running
+        with pytest.raises(asyncio.CancelledError):
+            await lifetime
+    assert finished.is_set() and not fake_app.state.services.owns_lock
+    assert not sync.lock.locked()

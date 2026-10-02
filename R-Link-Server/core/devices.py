@@ -228,6 +228,8 @@ def save_device(data: DeviceInput, device_id=None):
             db.execute('BEGIN IMMEDIATE')
             if device_id:
                 existing = raw_device(db, device_id)
+                if existing['source'] == 'netbird' and data.host != existing['host']:
+                    raise HTTPException(409, 'NetBird 直接节点地址由管理服务同步，请在上游修改节点地址')
                 values = data.model_dump()
                 for key in (*METADATA, 'gateway_id'):
                     if key not in data.model_fields_set:
