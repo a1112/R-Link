@@ -332,3 +332,30 @@ it('allows explicit removal when the current gateway is absent and no replacemen
   fireEvent.click(screen.getByRole('button', { name: '保存设备' }));
   await waitFor(() => expect(devicesApi.save).toHaveBeenCalledWith(expect.objectContaining({ gateway_id: null }), 'one', expect.any(AbortSignal)));
 });
+
+it('keeps one polling chain when an aborted poll finishes after a save and cannot restore stale online state', async () => {
+  vi.useFakeTimers();
+  const online = { ...device, connection_status: 'online' as const };
+  let resolveAborted!: (value: typeof online[]) => void;
+  let resolveNext!: (value: Array<typeof device & { connection_status: 'online' | 'offline' }>) => void;
+  vi.mocked(devicesApi.list).mockResolvedValueOnce([online])
+    .mockImplementationOnce(() => new Promise(resolve => { resolveAborted = resolve; }))
+    .mockImplementationOnce(() => new Promise(resolve => { resolveNext = resolve; }))
+    .mockResolvedValue([{ ...online, name: 'Renamed NAS' }]);
+  vi.mocked(devicesApi.save).mockResolvedValue({ ...online, name: 'Renamed NAS' });
+  render(<RemoteView />);
+  await act(async () => { await Promise.resolve(); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  fireEvent.click(screen.getByRole('button', { name: '编辑' }));
+  fireEvent.change(screen.getByLabelText('设备名称'), { target: { value: 'Renamed NAS' } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '保存设备' })); await Promise.resolve(); });
+  expect(screen.getByRole('heading', { name: 'Renamed NAS' })).toBeTruthy();
+  await act(async () => { resolveAborted([online]); await Promise.resolve(); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  expect(devicesApi.list).toHaveBeenCalledTimes(3);
+  await act(async () => { resolveNext([{ ...device, name: 'Renamed NAS', connection_status: 'offline' }]); await Promise.resolve(); });
+  expect(screen.getByText('组网状态：离线')).toBeTruthy();
+  await act(async () => { await vi.advanceTimersByTimeAsync(4999); });
+  expect(devicesApi.list).toHaveBeenCalledTimes(3);
+  expect(screen.queryByText('组网状态：在线')).toBeNull();
+});

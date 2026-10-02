@@ -60,8 +60,14 @@ export function RemoteView({ onSsh }: { onSsh?: (device: Device) => void }) {
     poll.current = () => {
       if (!mounted.current || mutation.current) return;
       const controller = new AbortController(); request.current = controller;
-      void refresh(controller.signal, generation.current).finally(() => {
-        if (mounted.current && !mutation.current && request.current === controller) timer.current = setTimeout(poll.current, 5000);
+      const token = generation.current;
+      void refresh(controller.signal, token).finally(() => {
+        // Only the current, uncancelled snapshot owns the next poll. A late
+        // aborted request cannot start a second chain after a mutation ends.
+        if (mounted.current && !mutation.current && !controller.signal.aborted && token === generation.current && request.current === controller) {
+          clearTimeout(timer.current);
+          timer.current = setTimeout(poll.current, 5000);
+        }
       });
     };
     poll.current();
@@ -74,6 +80,7 @@ export function RemoteView({ onSsh }: { onSsh?: (device: Device) => void }) {
     // A ref closes the gap before React renders disabled controls.
     if (mutation.current || !mounted.current) return;
     mutation.current = true; generation.current++; clearTimeout(timer.current); request.current?.abort();
+    request.current = null;
     const controller = new AbortController(); operationController.current = controller;
     const token = generation.current;
     const active = () => current(controller.signal, token);
