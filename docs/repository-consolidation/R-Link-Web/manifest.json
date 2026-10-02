@@ -303,9 +303,10 @@
       "source_path": "src/api/types.ts",
       "source_mode": "100644",
       "source_git_blob": "6a0fa2e527d16c3f313fd2948fb325996c2fa90a",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/api/types.ts",
-      "target_git_blob": "6a0fa2e527d16c3f313fd2948fb325996c2fa90a"
+      "target_git_blob": "6a0fa2e527d16c3f313fd2948fb325996c2fa90a",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/api/types.ts.source.txt"
     },
     {
       "source_path": "src/components/AuthPage.tsx",
@@ -333,7 +334,8 @@
       "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/NodeDetailModal.tsx",
       "target_git_blob": "f28e9fb774fed94e75df8e86372a73c3de92d8cc",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/NodeDetailModal.tsx.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/NodeDetailModal.tsx.source.txt",
+      "retired_reason": "模拟节点详情已由实际设备管理界面替代，原件保留用于迁移审查"
     },
     {
       "source_path": "src/components/PluginDetailModal.tsx",
@@ -434,9 +436,10 @@
       "source_path": "src/components/index.ts",
       "source_mode": "100644",
       "source_git_blob": "835b398af182033292f0f74f01f18c9040600e0d",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/index.ts",
-      "target_git_blob": "835b398af182033292f0f74f01f18c9040600e0d"
+      "target_git_blob": "835b398af182033292f0f74f01f18c9040600e0d",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/index.ts.source.txt"
     },
     {
       "source_path": "src/components/layout/Header.tsx",
@@ -542,25 +545,28 @@
       "source_path": "src/components/pages/DomainView.tsx",
       "source_mode": "100644",
       "source_git_blob": "f556e69f4be188ac2669b3e4883310be9ecd446a",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/pages/DomainView.tsx",
-      "target_git_blob": "f556e69f4be188ac2669b3e4883310be9ecd446a"
+      "target_git_blob": "f556e69f4be188ac2669b3e4883310be9ecd446a",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/pages/DomainView.tsx.source.txt"
     },
     {
       "source_path": "src/components/pages/DownloadsView.tsx",
       "source_mode": "100644",
       "source_git_blob": "1a3f2c01061b202e88511bc208c0d8524838e461",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/pages/DownloadsView.tsx",
-      "target_git_blob": "1a3f2c01061b202e88511bc208c0d8524838e461"
+      "target_git_blob": "1a3f2c01061b202e88511bc208c0d8524838e461",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/pages/DownloadsView.tsx.source.txt"
     },
     {
       "source_path": "src/components/pages/FRPView.tsx",
       "source_mode": "100644",
       "source_git_blob": "2a3a520a6ef0e5cb463078f60d60eef47b55f5bb",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/pages/FRPView.tsx",
-      "target_git_blob": "2a3a520a6ef0e5cb463078f60d60eef47b55f5bb"
+      "target_git_blob": "2a3a520a6ef0e5cb463078f60d60eef47b55f5bb",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/pages/FRPView.tsx.source.txt"
     },
     {
       "source_path": "src/components/pages/ProfileView.tsx",
@@ -594,9 +600,10 @@
       "source_path": "src/components/pages/StorageView.tsx",
       "source_mode": "100644",
       "source_git_blob": "f91a73196be6da8939b3c963fb35f7fd42e02d86",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/components/pages/StorageView.tsx",
-      "target_git_blob": "f91a73196be6da8939b3c963fb35f7fd42e02d86"
+      "target_git_blob": "f91a73196be6da8939b3c963fb35f7fd42e02d86",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/pages/StorageView.tsx.source.txt"
     },
     {
       "source_path": "src/components/pages/index.ts",
@@ -1061,17 +1068,20 @@
       "source_path": "src/constants/index.ts",
       "source_mode": "100644",
       "source_git_blob": "320015baaf4e2ffcd7e1f8bcfd07a2f1adab5491",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/constants/index.ts",
-      "target_git_blob": "320015baaf4e2ffcd7e1f8bcfd07a2f1adab5491"
+      "target_git_blob": "320015baaf4e2ffcd7e1f8bcfd07a2f1adab5491",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/constants/index.ts.source.txt"
     },
     {
       "source_path": "src/constants/mockData.ts",
       "source_mode": "100644",
       "source_git_blob": "8b3ad08c814066acf38f86bdc7b94d8a2bd99bea",
-      "disposition": "migrated",
+      "disposition": "migrated_with_adjustment",
       "target_path": "apps/r-link-web/src/constants/mockData.ts",
-      "target_git_blob": "8b3ad08c814066acf38f86bdc7b94d8a2bd99bea"
+      "target_git_blob": "8b3ad08c814066acf38f86bdc7b94d8a2bd99bea",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/constants/mockData.ts.source.txt",
+      "retired_reason": "已移除模拟设备数据，运行界面读取服务端；来源原件保留用于迁移审查"
     },
     {
       "source_path": "src/constants/routes.ts",

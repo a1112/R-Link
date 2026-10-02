@@ -36,7 +36,8 @@
     {
       "source_path": "src-tauri/src/project-resource-monitor.js",
       "source_git_blob": "f4e1b4b67112c2173fe59293a78bcdea6d8eac02",
-      "target_path": "apps/r-link-web/src-tauri/src/project-resource-monitor.js"
+      "target_path": "apps/r-link-web/src-tauri/src/project-resource-monitor.js",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/followup-originals/src-tauri/src/project-resource-monitor.js.source.txt"
     },
     {
       "source_path": "src-tauri/src/project-window-chrome.js",
@@ -51,7 +52,8 @@
     {
       "source_path": "src-tauri/src/project_resource_monitor.rs",
       "source_git_blob": "586781d251b1cdc2975ee7cb59b03f1902fc282c",
-      "target_path": "apps/r-link-web/src-tauri/src/project_resource_monitor.rs"
+      "target_path": "apps/r-link-web/src-tauri/src/project_resource_monitor.rs",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/followup-originals/src-tauri/src/project_resource_monitor.rs.source.txt"
     },
     {
       "source_path": "src-tauri/src/project_window_chrome.rs",
@@ -79,7 +81,8 @@
       "source_path": "src/constants/mockData.ts",
       "source_git_blob": "18506a1814383de1288f7b8e6f108438c6784b73",
       "target_path": "apps/r-link-web/src/constants/mockData.ts",
-      "archive_path": "docs/repository-consolidation/R-Link-Web/followup-originals/src/constants/mockData.ts.source.txt"
+      "archive_path": "docs/repository-consolidation/R-Link-Web/followup-originals/src/constants/mockData.ts.source.txt",
+      "retired_reason": "已移除模拟设备数据，运行界面读取服务端；来源原件保留用于迁移审查"
     },
     {
       "source_path": "vite.config.ts",
