@@ -10,7 +10,7 @@
 
 保留原设备 UUID、host/port/username、revision 和探测状态。迁移添加 device_type（computer/server/nas/mobile/router/iot/other）、platform（unknown/windows/linux/macos/android/ios/other）、tags（最多16个、每项32字符）、notes（500字符）、access_mode（ssh/web/none）、web_scheme（http/https）、gateway_id。旧输入仍可用，旧 PUT 省略新字段时保留已有元数据。
 
-来源为 manual/netbird/gateway。NetBird 身份按管理服务源地址加 peer_id 识别，不按 IP 自动合并。同步创建的节点默认 access_mode=none，由操作员显式配置服务。gateway_id 仅关联未撤销的直接入网设备，禁止悬空、递归及自引用。保留256台容量；导入和同步事务不部分写入。
+来源为 manual/netbird/gateway。NetBird 身份按管理服务源地址加 peer_id 识别，不按 IP 自动合并。直接节点的主机地址由上游管理，旧 PUT 同地址保持兼容，改变地址返回冲突；本地服务端口和元数据仍可编辑。同步创建的节点默认 access_mode=none，由操作员显式配置服务。gateway_id 仅关联未撤销的直接入网设备，禁止悬空、递归及自引用。保留256台容量；导入和同步事务不部分写入。
 
 默认 v1 导出兼容旧客户端；v2 保留可移植的类型、平台、标签、备注及服务配置，不导出密钥、观测历史、外部身份或网关 UUID。完整身份与网关关联随数据库备份。
 
