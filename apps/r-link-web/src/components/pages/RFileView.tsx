@@ -9,11 +9,12 @@ const panel = 'rounded-xl border border-[var(--c-800)] p-4';
 function stateLabel(state: RFileService['state']) {
   return state === 'online' ? '在线' : state === 'unchecked' ? '正在检查' : '不可用';
 }
-function ServiceCard({ label, service }: { label: string; service: RFileService }) {
+function ServiceCard({ label, service, sessions }: { label: string; service: RFileService; sessions?: number | null }) {
   return <div className={panel}>
     <h3 className="font-semibold">{label} <span className={service.state === 'online' ? 'text-emerald-400' : 'text-amber-400'}>{stateLabel(service.state)}</span></h3>
     <p className="mt-2 break-all text-sm text-[var(--c-400)]">{service.url || '地址配置无效'}</p>
     <p className="mt-1 text-xs text-[var(--c-500)]">最后检查：{service.checked_at ? new Date(service.checked_at).toLocaleString() : '尚未检查'}</p>
+    {sessions !== undefined && <p className="mt-2 text-sm text-[var(--c-400)]">活动会话：{sessions !== null && service.state === 'online' ? sessions : '暂不可用'}</p>}
     {service.error && <p className="mt-2 text-sm text-amber-400">{service.error}</p>}
   </div>;
 }
@@ -109,7 +110,7 @@ export function RFileView() {
     {service.loading && <p role="status">正在读取 R-File 服务状态…</p>}
     {data && <>
       {data.config_error && <p role="alert" className="text-red-400">{data.config_error}</p>}
-      <div className="grid gap-4 md:grid-cols-2"><ServiceCard label="文件服务" service={data.watch} /><ServiceCard label="网络服务" service={data.network} /></div>
+      <div className="grid gap-4 md:grid-cols-2"><ServiceCard label="文件服务" service={data.watch} /><ServiceCard label="网络服务" service={data.network} sessions={data.network.active_sessions} /></div>
       <div className={panel}><h3 className="font-semibold">R-File 网络设备</h3>
         <p className="mt-2 text-sm text-[var(--c-400)]">设备状态来自 R-File 网络服务。文件访问仍取决于设备的共享设置和访问权限。</p>
         {data.devices.length === 0 ? <p className="mt-3 text-sm text-[var(--c-400)]">{data.network.state === 'online' ? '当前没有可见的 R-File 设备。' : '网络服务恢复后可读取设备。'}</p> : <ul className="mt-3 space-y-3">{data.devices.map(device => <li key={device.deviceId} className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--c-800)] pt-3">

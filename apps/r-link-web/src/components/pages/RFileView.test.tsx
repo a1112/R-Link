@@ -7,7 +7,7 @@ import { setServiceKey } from '../../api/service-access';
 vi.mock('../../utils/download', () => ({ saveBlob: vi.fn() }));
 
 const state = (enabled = false): RFileStatus => ({ watch: { url: 'http://127.0.0.1:18080', state: 'online', error: null, checked_at: null },
-  network: { url: 'http://127.0.0.1:18100', state: 'online', error: null, controller_registered: true, checked_at: null },
+  network: { url: 'http://127.0.0.1:18100', state: 'online', error: null, controller_registered: true, checked_at: null, active_sessions: 0 },
   devices: [{ deviceId: 'nas', deviceName: 'DS918+', platform: 'linux', presence: 'online', connectivity: 'relay' }],
   files: { enabled, reason: enabled ? null : '在服务端配置 R-File 访问凭据和一个共享目录后可浏览文件', max_file_bytes: 64 * 1024 * 1024 }, config_error: null });
 const file = { name: 'actual.txt', path: 'actual.txt', kind: 'file', size: 5, modified_at: '', readonly: false };
@@ -130,4 +130,14 @@ it('shows service check times next to cached service observations', async () => 
   render(<RFileView />);
   await screen.findByText('DS918+');
   expect(screen.getAllByText(/最后检查/)).toHaveLength(2);
+});
+
+it('shows the verified bridge active-session count and unavailable state after a failed check', async () => {
+  currentState = { ...state(), network: { ...state().network, active_sessions: 2 } } as RFileStatus;
+  render(<RFileView />);
+  await screen.findByText('活动会话：2');
+  currentState = { ...state(), network: { ...state().network, state: 'offline', active_sessions: null } } as RFileStatus;
+  fireEvent.click(screen.getByRole('button', { name: '刷新服务' }));
+  await screen.findByText('活动会话：暂不可用');
+  expect(screen.queryByText('活动会话：2')).toBeNull();
 });

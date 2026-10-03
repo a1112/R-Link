@@ -6,7 +6,7 @@ export type RFileDevice = { deviceId: string; deviceName?: string; deviceType?: 
   presence?: string; connectivity?: string; trustState?: string; deviceRole?: string;
   initiationStatus?: string; initiationBlockedReason?: string };
 export type RFileService = { url: string; state: 'unchecked' | 'online' | 'offline' | 'error'; error: string | null; checked_at: string | null };
-export type RFileStatus = { watch: RFileService; network: RFileService & { controller_registered: boolean };
+export type RFileStatus = { watch: RFileService; network: RFileService & { controller_registered: boolean; active_sessions: number | null };
   files: { enabled: boolean; max_file_bytes: number; reason: string | null }; devices: RFileDevice[]; config_error: string | null };
 export type RFileEntry = { path: string; name: string; kind: 'directory' | 'file'; size: number | null; modified_at: string; readonly: boolean };
 export type RFileListing = { path: string; entries: RFileEntry[]; skipped: number; max_file_bytes: number; writable: boolean };

@@ -53,7 +53,7 @@ class ExistingServices:
         self.requests.append(request)
         path = request.url.path
         if path.endswith('/api/v1/bridge/health'):
-            return httpx.Response(200, json={'service': 'rfile-bridge', 'status': 'ok'})
+            return httpx.Response(200, json={'service': 'rfile-bridge', 'status': 'ok', 'activeSessions': 2})
         if path.endswith('/api/v1/health'):
             return httpx.Response(200, json={'service': 'rfile-watch', 'status': 'ok'})
         if path.endswith('/api/v1/bridge/register'):
@@ -610,8 +610,10 @@ async def test_disconnect_before_first_response_chunk_closes_download_lease(monk
         return {'type': 'http.disconnect'}
     async def send(message):
         raise BrokenPipeError()
+    async def waiting_receive():
+        await asyncio.Event().wait()
     try:
-        response = await download(Request(scope), 'actual.txt')
+        response = await download(Request(scope, waiting_receive), 'actual.txt')
         with pytest.raises(ClientDisconnect):
             await response(scope, receive, send)
         assert not service.downloads
@@ -619,3 +621,105 @@ async def test_disconnect_before_first_response_chunk_closes_download_lease(monk
     finally:
         app.state.rfile = original
         await service.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('method', ['GET', 'PUT'])
+async def test_browser_disconnect_cancels_pending_upstream_transfer_via_asgi_receive(monkeypatch, method):
+    upstream = ExistingServices()
+    entered = asyncio.Event()
+    disconnected = asyncio.Event()
+    upstream_closed = asyncio.Event()
+    calls = []
+    class PendingDownload(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            entered.set()
+            await asyncio.Event().wait()
+            yield b'hello'
+        async def aclose(self):
+            upstream_closed.set()
+    async def handler(request):
+        if request.url.path.endswith('/download'):
+            return httpx.Response(200, stream=PendingDownload())
+        if request.url.path.endswith('/upload'):
+            entered.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                upstream_closed.set()
+        return upstream(request)
+    service = configured(monkeypatch, handler, R_LINK_RFILE_SESSION_TOKEN='secret', R_LINK_RFILE_ROOT='/share')
+    monkeypatch.setenv('R_LINK_API_TOKEN', 'operator-key')
+    original = getattr(app.state, 'rfile', None)
+    app.state.rfile = service
+    endpoint = 'download?path=actual.txt' if method == 'GET' else 'upload?name=upload.txt'
+    path, query = endpoint.split('?')
+    scope = {'type': 'http', 'method': method, 'path': '/api/rfile/' + path,
+             'headers': [(b'authorization', b'Bearer operator-key')], 'query_string': query.encode(),
+             'scheme': 'http', 'server': ('127.0.0.1', 8210), 'client': ('127.0.0.1', 10001),
+             'asgi': {'version': '3.0', 'spec_version': '2.4'}}
+    first = True
+    async def receive():
+        nonlocal first
+        calls.append('receive')
+        if first:
+            first = False
+            return {'type': 'http.request', 'body': b'hello' if method == 'PUT' else b'', 'more_body': False}
+        await disconnected.wait()
+        return {'type': 'http.disconnect'}
+    sent = []
+    async def send(message):
+        sent.append(message)
+    task = asyncio.create_task(app(scope, receive, send))
+    try:
+        await asyncio.wait_for(entered.wait(), 1)
+        disconnected.set()
+        done, _ = await asyncio.wait({task}, timeout=0.1)
+        assert task in done, 'ASGI disconnect must stop the pending upstream transfer immediately'
+        await task
+        assert calls
+        assert upstream_closed.is_set()
+        assert service.transfers._value == 4
+        assert not service.downloads
+        assert next(row['status'] for row in sent if row['type'] == 'http.response.start') == 499
+    finally:
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        app.state.rfile = original
+        await service.close()
+
+
+@pytest.mark.asyncio
+async def test_bridge_active_session_count_is_observed_and_cleared_on_failure(monkeypatch):
+    upstream = ExistingServices()
+    failed = False
+    def handler(request):
+        if failed and request.url.path.endswith('/bridge/health'):
+            return httpx.Response(503)
+        return upstream(request)
+    service = configured(monkeypatch, handler)
+    assert service.status()['network'].get('active_sessions') is None
+    await service.refresh()
+    assert service.status()['network'].get('active_sessions') == 2
+    failed = True
+    await service.refresh()
+    assert service.status()['network']['state'] == 'offline'
+    assert service.status()['network'].get('active_sessions') is None
+    await service.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('count', [-1, True, '2', None, 2 ** 53])
+async def test_invalid_bridge_session_counts_are_not_shown_as_verified_state(monkeypatch, count):
+    upstream = ExistingServices()
+    def handler(request):
+        if request.url.path.endswith('/bridge/health'):
+            return httpx.Response(200, json={'service': 'rfile-bridge', 'status': 'ok', 'activeSessions': count})
+        return upstream(request)
+    service = configured(monkeypatch, handler)
+    await service.refresh()
+    assert service.status()['network']['state'] == 'offline'
+    assert service.status()['network'].get('active_sessions') is None
+    assert not any(r.url.path.endswith('/register') for r in upstream.requests)
+    await service.close()

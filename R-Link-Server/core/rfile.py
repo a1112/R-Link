@@ -136,6 +136,7 @@ class RFile:
         self.watch = {'state': 'unchecked', 'error': None, 'checked_at': None}
         self.network = {'state': 'unchecked', 'error': None, 'checked_at': None}
         self.devices = []
+        self.active_sessions = None
         self.headers = {}
         self.identity_dir = Path(os.getenv('R_LINK_DATA_DIR') or SERVER_DIR / 'data') / 'rfile'
         try:
@@ -176,7 +177,8 @@ class RFile:
     def status(self):
         enabled = bool(self.root and self.headers and not self.config_error)
         return {'watch': {'url': self.watch_url, **self.watch},
-                'network': {'url': self.bridge_url, **self.network, 'controller_registered': self.registered},
+                'network': {'url': self.bridge_url, **self.network, 'controller_registered': self.registered,
+                            'active_sessions': self.active_sessions},
                 'files': {'enabled': enabled, 'max_file_bytes': MAX_FILE_BYTES,
                           'reason': None if enabled else '在服务端配置 R-File 访问凭据和一个共享目录后可浏览文件'},
                 'devices': [dict(row) for row in self.devices], 'config_error': self.config_error}
@@ -244,6 +246,7 @@ class RFile:
         data = await self.request('GET', base, endpoint)
         if not isinstance(data, dict) or data.get('service') != expected or data.get('status') != 'ok':
             raise HTTPException(502, '服务身份与 R-File 不匹配')
+        return data
 
     def device_headers(self):
         return {'x-rfile-device-id': self.identity['id'], 'x-rfile-device-token': self.identity['key']}
@@ -254,6 +257,7 @@ class RFile:
         except HTTPException as exc:
             if exc.status_code == 503:
                 self.devices = []
+                self.active_sessions = None
                 self.registered = False
                 self.network = observation('offline', 'R-File 网络服务暂时不可用')
             raise
@@ -265,13 +269,17 @@ class RFile:
             raise HTTPException(429, 'R-File 状态正在刷新')
         async with self.lock, self.operation():
             self.devices = []
+            self.active_sessions = None
             try:
                 await self.health(self.watch_url, '/api/v1/health', 'rfile-watch')
                 self.watch = observation('online')
             except (HTTPException, httpx.HTTPError, TimeoutError):
                 self.watch = observation('offline', 'R-File 文件服务不可用或身份不匹配')
             try:
-                await self.health(self.bridge_url, '/api/v1/bridge/health', 'rfile-bridge')
+                bridge_health = await self.health(self.bridge_url, '/api/v1/bridge/health', 'rfile-bridge')
+                active_sessions = bridge_health.get('activeSessions')
+                if type(active_sessions) is not int or not 0 <= active_sessions < 2 ** 53:
+                    raise HTTPException(502, 'R-File 会话状态响应无效')
                 if self.identity is None:
                     try:
                         worker = asyncio.create_task(asyncio.to_thread(controller_identity, self.identity_dir))
@@ -306,6 +314,7 @@ class RFile:
                     devices.append({field: row[field] for field in DEVICE_FIELDS
                                     if isinstance(row.get(field), str) and len(row[field]) <= 240})
                 self.devices = devices
+                self.active_sessions = active_sessions
                 self.network = observation('online')
             except (HTTPException, httpx.HTTPError, TimeoutError):
                 self.network = observation('offline', 'R-File 网络服务不可用或设备注册失败')
@@ -332,6 +341,7 @@ class RFile:
         finally:
             self.registered = False
             self.registration_attempted = False
+            self.active_sessions = None
             for file in list(self.downloads):
                 file.close()
             await self.client.aclose()
