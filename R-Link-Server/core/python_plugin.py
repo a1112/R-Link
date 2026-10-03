@@ -62,7 +62,8 @@ class PythonPlugin:
         self.instance = None
         self.thread: Optional[threading.Thread] = None
         self.stop_event = threading.Event()
-        self.config_path = os.path.join(plugin_dir, "config", f"{info.name}.json")
+        from core.paths import CONFIG_DIR
+        self.config_path = str(CONFIG_DIR / "plugins" / f"{info.name}.json") if info.builtin else os.path.join(plugin_dir, "config", f"{info.name}.json")
         self._ensure_config_dir()
 
     def _ensure_config_dir(self):
@@ -80,9 +81,14 @@ class PythonPlugin:
             # 动态导入模块
             entry_file = plugin_path / self.info.entry_file
             if not entry_file.exists():
-                # 尝试 .pyd 文件
+                # The desktop payload contains compiled plugins, not private .py sources.
+                bytecode = entry_file.with_suffix(".pyc")
                 pyd_file = plugin_path / f"{self.info.entry_file.removesuffix('.py')}.pyd"
-                if not pyd_file.exists():
+                if bytecode.exists():
+                    entry_file = bytecode
+                elif pyd_file.exists():
+                    entry_file = pyd_file
+                else:
                     raise FileNotFoundError(f"Plugin entry file not found: {entry_file}")
 
             spec = importlib.util.spec_from_file_location(

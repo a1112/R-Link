@@ -51,7 +51,8 @@ class BinaryPlugin:
         self.manifest = manifest
         self.plugin_dir = plugin_dir
         self.process_pool = process_pool
-        self.config_path = os.path.join(plugin_dir, "config", f"{manifest.name}.json")
+        from core.paths import CONFIG_DIR
+        self.config_path = str(CONFIG_DIR / "plugins" / f"{manifest.name}.json") if manifest.builtin else os.path.join(plugin_dir, "config", f"{manifest.name}.json")
         self.binary_path = os.path.join(plugin_dir, manifest.binary)
         self._ensure_config_dir()
 

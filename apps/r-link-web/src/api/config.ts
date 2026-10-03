@@ -3,6 +3,15 @@
  */
 
 import { getServiceUrl } from './service-url';
+import { invoke } from '@tauri-apps/api/core';
+
+let desktopBaseURL = '';
+
+export async function initializeDesktopBackend() {
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+    desktopBaseURL = await invoke<string>('desktop_backend_endpoint');
+  }
+}
 
 const defaultBaseURL = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL ||
   (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window ? 'http://127.0.0.1:8210' : '')).replace(/\/$/, '');
@@ -10,7 +19,7 @@ const defaultBaseURL = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VIT
 export const API_CONFIG = {
   // 基础 URL 为空，因为 API_ENDPOINTS 已包含完整路径
   // 请求会通过 Vite 代理转发到后端
-  get baseURL() { return getServiceUrl() || defaultBaseURL; },
+  get baseURL() { return getServiceUrl() || desktopBaseURL || defaultBaseURL; },
 
   // 请求超时时间 (毫秒)
   timeout: 30000,

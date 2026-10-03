@@ -41,6 +41,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+artifacts/
 .repository-consolidation-local/
 logs/
 R-Link-Server/config/plugin_sources.json
