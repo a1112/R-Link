@@ -1,6 +1,8 @@
 # R-Link Windows managed preview
 
 This private release branch adds the self-contained desktop payload consumed by R-Box.
+The managed preview identifier is `com.rlink.rbox.preview`, so its single-instance
+check cannot silently hand launch requests to an existing system-installed R-Link.
 The original checkout is not used during launch. Private server modules are frozen
 inside the PyInstaller archive; R-Link built-in plugins are shipped as compiled
 bytecode and manifests.

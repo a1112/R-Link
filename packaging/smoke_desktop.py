@@ -54,7 +54,7 @@ def main():
                 deadline = time.monotonic() + 55
                 while time.monotonic() < deadline:
                     if desktop.poll() is not None:
-                        raise RuntimeError("Desktop exited before window/backend acceptance")
+                        raise RuntimeError(f"Desktop exited ({desktop.returncode}) before window/backend acceptance")
                     process = psutil.Process(desktop.pid)
                     children = process.children()
                     backend = next((child for child in children if child.name() == "r-link-server.exe"), None)
@@ -78,6 +78,9 @@ def main():
                 backend.wait(timeout=15)
                 results["checks"].append("backend-exit-after-unexpected-parent-termination")
                 results["result"] = "passed"
+            except Exception:
+                print((Path(directory) / "output.log").read_text(encoding="utf-8", errors="replace")[-12000:])
+                raise
             finally:
                 if desktop.poll() is None:
                     desktop.kill()
@@ -90,6 +93,14 @@ def main():
                 except psutil.NoSuchProcess:
                     pass
     (ROOT / "artifacts/native-window-smoke.json").write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+    report = ROOT / "artifacts/native-runtime-smoke.json"
+    environment = os.environ.copy()
+    environment["PATH"] = str(Path(os.environ["SystemRoot"]) / "System32")
+    subprocess.run([str(EXE), "--rbox-runtime-check", str(report)], cwd=ROOT / "artifacts",
+                   env=environment, check=True, timeout=60, creationflags=0x08000000)
+    native_runtime = json.loads(report.read_text(encoding="utf-8"))
+    assert native_runtime["result"] == "passed" and native_runtime["backendStopped"]
+    print(json.dumps(native_runtime, indent=2))
     print(json.dumps(results, indent=2))
 
 
