@@ -24,3 +24,8 @@ custom-protocol = ["tauri/custom-protocol"]
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2"
+# 2.6+ requires Rust 1.90; retain compatibility with the project's Rust 1.89 build.
+tauri-plugin-autostart = "=2.5.1"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.10.1"
