@@ -19,6 +19,7 @@ from fastapi import HTTPException
 from starlette.concurrency import run_in_threadpool
 from core.paths import SERVER_DIR
 from core.device_sync import drain_task
+from core.rfile_permissions import checked_identity_path, make_private
 
 MAX_FILE_BYTES = 64 * 1024 * 1024
 MAX_JSON_BYTES = 2 * 1024 * 1024
@@ -85,13 +86,17 @@ def relative_parts(value, windows=False):
 
 def controller_identity(directory):
     directory.mkdir(parents=True, exist_ok=True)
-    if directory.is_symlink():
-        raise ValueError()
-    os.chmod(directory, 0o700)
+    checked_identity_path(directory, directory=True)
     target = directory / 'controller.json'
-    if target.is_symlink():
-        raise ValueError()
-    if target.exists():
+    try:
+        checked_identity_path(target)
+    except FileNotFoundError:
+        exists = False
+    else:
+        exists = True
+    make_private(directory, directory=True)
+    if exists:
+        make_private(target)
         if target.stat().st_size > 4096:
             raise ValueError()
         data = json.loads(target.read_text(encoding='utf-8'))
@@ -100,17 +105,17 @@ def controller_identity(directory):
         uuid.UUID(data['id'])
         if not isinstance(data['key'], str) or not re.fullmatch(r'[A-Za-z0-9_-]{32,128}', data['key']):
             raise ValueError()
-        os.chmod(target, 0o600)
         return data
     data = {'id': str(uuid.uuid4()), 'key': secrets.token_urlsafe(48)}
     descriptor, name = tempfile.mkstemp(prefix='.controller-', dir=directory)
     try:
         with os.fdopen(descriptor, 'w', encoding='utf-8') as file:
-            os.chmod(name, 0o600)
+            make_private(name)
             json.dump(data, file)
             file.flush()
             os.fsync(file.fileno())
         os.replace(name, target)
+        make_private(target)
     finally:
         with suppress(FileNotFoundError):
             os.unlink(name)
@@ -171,6 +176,7 @@ class RFile:
             self.headers = {}
             context = ssl.create_default_context()
         self.client = httpx.AsyncClient(transport=transport, verify=context, trust_env=False,
+            headers={'Accept-Encoding': 'identity'},
             follow_redirects=False, timeout=httpx.Timeout(5, connect=2),
             limits=httpx.Limits(max_connections=8, max_keepalive_connections=4))
 
@@ -221,6 +227,9 @@ class RFile:
     @staticmethod
     def check_response(response):
         if 200 <= response.status_code < 300:
+            # httpx decompresses before chunking, so reject encodings before reading.
+            if response.headers.get('content-encoding', '').strip().lower() not in {'', 'identity'}:
+                raise HTTPException(502, 'R-File 压缩响应不受支持')
             return
         messages = {401: 'R-File 访问凭据无效', 403: 'R-File 拒绝访问该共享目录',
                     404: 'R-File 文件或服务不存在', 409: 'R-File 已存在同名文件', 413: '单文件不能超过 64 MiB'}
@@ -441,7 +450,8 @@ class RFile:
                     size += len(chunk)
                     if size > MAX_FILE_BYTES:
                         raise HTTPException(413, '单文件不能超过 64 MiB')
-                    await run_in_threadpool(file.write, chunk)
+                    worker = asyncio.create_task(run_in_threadpool(file.write, chunk))
+                    await drain_task(worker)
                 file.seek(0)
                 return await self._upload(relative, name, file)
 
@@ -472,7 +482,8 @@ class RFile:
                         size += len(chunk)
                         if size > MAX_FILE_BYTES:
                             raise HTTPException(413, '单文件不能超过 64 MiB')
-                        await run_in_threadpool(file.write, chunk)
+                        worker = asyncio.create_task(run_in_threadpool(file.write, chunk))
+                        await drain_task(worker)
                 file.seek(0)
                 def release():
                     self.downloads.discard(owned)

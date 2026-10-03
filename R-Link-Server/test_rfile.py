@@ -5,6 +5,10 @@ import os
 from pathlib import Path
 import threading
 from datetime import datetime
+import gzip
+import base64
+import subprocess
+import uuid
 
 import httpx
 import pytest
@@ -723,3 +727,193 @@ async def test_invalid_bridge_session_counts_are_not_shown_as_verified_state(mon
     assert service.status()['network'].get('active_sessions') is None
     assert not any(r.url.path.endswith('/register') for r in upstream.requests)
     await service.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('operation', ['metadata', 'download', 'upload'])
+async def test_compressed_upstream_responses_are_rejected_without_reading_or_decoding(monkeypatch, tmp_path, operation):
+    from core import rfile
+    upstream = ExistingServices()
+    reads = []
+    closed = []
+    class Compressed(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            reads.append(True)
+            yield gzip.compress(b'x' * 1024 * 1024)
+        async def aclose(self):
+            closed.append(True)
+    endpoint = {'metadata': '/api/v1/health', 'download': '/api/v1/download', 'upload': '/api/v1/upload'}[operation]
+    def handler(request):
+        if request.url.path.endswith(endpoint):
+            upstream.requests.append(request)
+            return httpx.Response(200, headers={'Content-Encoding': 'gzip'}, stream=Compressed())
+        return upstream(request)
+    service = configured(monkeypatch, handler, R_LINK_RFILE_SESSION_TOKEN='secret', R_LINK_RFILE_ROOT='/share')
+    try:
+        with pytest.raises(HTTPException) as encoded:
+            if operation == 'metadata':
+                await service.request('GET', service.watch_url, endpoint)
+            elif operation == 'download':
+                await service.download('actual.txt')
+            else:
+                with (tmp_path / 'bytes').open('w+b') as file:
+                    await service.upload('', 'upload.txt', file, 0)
+        assert encoded.value.status_code == 502
+        assert reads == []
+        assert closed
+        assert all(request.headers.get('accept-encoding') == 'identity' for request in upstream.requests)
+        assert service.transfers._value == 4
+    finally:
+        await service.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('operation', ['upload', 'download'])
+async def test_cancelled_transfer_drains_disk_thread_before_closing_spool_and_slot(monkeypatch, operation):
+    from core import rfile
+    real_spool = rfile.tempfile.SpooledTemporaryFile
+    entered = threading.Event()
+    release = threading.Event()
+    finished = threading.Event()
+    instances = []
+    thread_errors = []
+    class DelayedSpool:
+        def __init__(self, *args, **kwargs):
+            self.file = real_spool(*args, **kwargs)
+            instances.append(self)
+        def write(self, data):
+            entered.set()
+            release.wait(2)
+            try:
+                return self.file.write(data)
+            except Exception as exc:
+                thread_errors.append(exc)
+                raise
+            finally:
+                finished.set()
+        def __getattr__(self, name):
+            return getattr(self.file, name)
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            self.file.close()
+    monkeypatch.setattr(rfile.tempfile, 'SpooledTemporaryFile', DelayedSpool)
+    service = configured(monkeypatch, ExistingServices(), R_LINK_RFILE_SESSION_TOKEN='secret', R_LINK_RFILE_ROOT='/share')
+    async def chunks():
+        yield b'hello'
+    task = asyncio.create_task(service.upload_stream('', 'upload.txt', chunks()) if operation == 'upload'
+                               else service.download('actual.txt'))
+    try:
+        assert await asyncio.to_thread(entered.wait, 1)
+        task.cancel()
+        await asyncio.sleep(0.02)
+        assert not task.done()
+        assert not instances[0].closed
+        assert service.transfers._value == 3
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert finished.is_set()
+        assert instances[0].closed
+        assert service.transfers._value == 4
+        assert not thread_errors
+    finally:
+        release.set()
+        await asyncio.gather(task, return_exceptions=True)
+        await service.close()
+
+
+def windows_acl(path, *, broad=False):
+    literal = "'" + str(path).replace("'", "''") + "'"
+    script = "$ErrorActionPreference='Stop'; $item=" + literal + "; $info=if([IO.Directory]::Exists($item)){[IO.DirectoryInfo]::new($item)}else{[IO.FileInfo]::new($item)}; $acl=$info.GetAccessControl(); "
+    if broad:
+        script += "$rule=[System.Security.AccessControl.FileSystemAccessRule]::new([System.Security.Principal.SecurityIdentifier]::new('S-1-5-11'),'Modify','ContainerInherit,ObjectInherit','None','Allow'); $acl.AddAccessRule($rule); $info.SetAccessControl($acl); $acl=$info.GetAccessControl(); "
+    script += "[pscustomobject]@{sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value; protected=$acl.AreAccessRulesProtected; sddl=$acl.Sddl; rules=@($acl.Access | ForEach-Object {[pscustomobject]@{sid=$_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value; inherited=$_.IsInherited; rights=[int]$_.FileSystemRights; type=$_.AccessControlType.ToString()}})} | ConvertTo-Json -Depth 4 -Compress"
+    encoded = base64.b64encode(script.encode('utf-16-le')).decode('ascii')
+    result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
+                            capture_output=True, check=True, text=True, timeout=15)
+    return json.loads(result.stdout)
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Actual Windows ACL verification')
+def test_windows_controller_identity_has_verified_private_acl_and_keeps_parent_acl(tmp_path):
+    from core.rfile import controller_identity
+    parent = tmp_path / 'owned-broad-parent'
+    parent.mkdir()
+    original = windows_acl(parent, broad=True)
+    directory = parent / 'rfile'
+    controller_identity(directory)
+    for path in (directory, directory / 'controller.json'):
+        acl = windows_acl(path)
+        assert acl['protected'] is True
+        assert {rule['sid'] for rule in acl['rules']} == {original['sid'], 'S-1-5-18'}
+        assert all(not rule['inherited'] and rule['type'] == 'Allow' and rule['rights'] == 0x1F01FF for rule in acl['rules'])
+    assert windows_acl(parent)['sddl'] == original['sddl']
+
+
+def test_hardlinked_identity_is_rejected_before_changing_any_permissions(tmp_path):
+    from core.rfile import controller_identity
+    outside = tmp_path / 'outside.json'
+    outside.write_text(json.dumps({'id': str(uuid.uuid4()), 'key': 'k' * 64}))
+    directory = tmp_path / 'rfile'
+    directory.mkdir()
+    os.link(outside, directory / 'controller.json')
+    before = windows_acl(outside)['sddl'] if os.name == 'nt' else outside.stat().st_mode
+    directory_before = windows_acl(directory)['sddl'] if os.name == 'nt' else directory.stat().st_mode
+    with pytest.raises(ValueError):
+        controller_identity(directory)
+    assert (windows_acl(outside)['sddl'] if os.name == 'nt' else outside.stat().st_mode) == before
+    assert (windows_acl(directory)['sddl'] if os.name == 'nt' else directory.stat().st_mode) == directory_before
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Actual Windows ACL verification')
+def test_identity_acl_is_verified_before_credentials_are_written_and_does_not_change_other_children(monkeypatch, tmp_path):
+    from core import rfile
+    parent = tmp_path / 'owned-parent'
+    parent.mkdir()
+    original = windows_acl(parent, broad=True)
+    directory = parent / 'rfile'
+    directory.mkdir()
+    other = directory / 'unrelated.txt'
+    other.write_text('untouched')
+    other_acl = windows_acl(other)['sddl']
+    real_dump = rfile.json.dump
+    writes = []
+    def private_write(data, file):
+        path = next(directory.glob('.controller-*'))
+        acl = windows_acl(path)
+        assert path.stat().st_size == 0
+        assert acl['protected'] is True
+        assert {rule['sid'] for rule in acl['rules']} == {original['sid'], 'S-1-5-18'}
+        writes.append(True)
+        real_dump(data, file)
+    monkeypatch.setattr(rfile.json, 'dump', private_write)
+    identity = rfile.controller_identity(directory)
+    assert writes == [True]
+    assert rfile.controller_identity(directory) == identity
+    assert windows_acl(other)['sddl'] == other_acl
+    assert windows_acl(parent)['sddl'] == original['sddl']
+
+
+@pytest.mark.asyncio
+async def test_failed_private_permissions_never_write_credentials_or_register(monkeypatch):
+    from core import rfile
+    upstream = ExistingServices()
+    service = configured(monkeypatch, upstream)
+    real_private = rfile.make_private
+    writes = []
+    def unavailable(path, *, directory=False):
+        if not directory:
+            raise OSError('private ACL unavailable')
+        real_private(path, directory=True)
+    monkeypatch.setattr(rfile, 'make_private', unavailable)
+    monkeypatch.setattr(rfile.json, 'dump', lambda *args: writes.append(True))
+    try:
+        await service.refresh()
+        assert service.status()['network']['state'] == 'offline'
+        assert service.identity is None
+        assert not writes
+        assert not any(request.url.path.endswith('/register') for request in upstream.requests)
+        assert not list(service.identity_dir.iterdir())
+    finally:
+        await service.close()
