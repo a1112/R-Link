@@ -2,6 +2,7 @@
 import argparse
 import json
 import importlib.metadata
+import os
 from pathlib import Path
 import py_compile
 import shutil
@@ -19,6 +20,16 @@ def run(*args, cwd=ROOT):
     subprocess.run(list(args), cwd=cwd, check=True)
 
 
+def npm(*args, cwd):
+    node = shutil.which("node")
+    if not node:
+        raise SystemExit("Node.js is required for desktop builds")
+    cli = Path(node).resolve().parent / "node_modules/npm/bin/npm-cli.js"
+    if not cli.is_file():
+        raise SystemExit("Use a Node.js installation containing its bundled npm CLI")
+    run(node, str(cli), *args, cwd=cwd)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--runtime-only", action="store_true")
@@ -26,6 +37,7 @@ def main():
     if sys.version_info[:2] != (3, 12):
         raise SystemExit("Windows runtime builds are locked to Python 3.12")
     OUT.mkdir(exist_ok=True)
+    os.environ["PYINSTALLER_CONFIG_DIR"] = str(OUT / "freezer-cache")
     PAYLOAD.mkdir(exist_ok=True)
     freezer = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir",
                "--name", ID + "-server", "--distpath", str(OUT / "frozen"),
@@ -60,8 +72,8 @@ def main():
     shutil.copy2(OUT / "plugin-frozen/nginx-plugin.exe", nginx / "nginx-plugin.exe")
 
     if not args.runtime_only:
-        run("cmd.exe", "/c", "npm.cmd", "ci", cwd=ROOT / "apps/r-link-web")
-        run("cmd.exe", "/c", "npm.cmd", "run", "build", cwd=ROOT / "apps/r-link-web")
+        npm("ci", cwd=ROOT / "apps/r-link-web")
+        npm("run", "build", cwd=ROOT / "apps/r-link-web")
 
         run("cargo", "+1.94.1", "build", "--release", "--locked", "-j4", "--manifest-path",
             str(ROOT / "apps/r-link-web/src-tauri/Cargo.toml"), "--bin", "rlink-tauri", "--features", "custom-protocol")
