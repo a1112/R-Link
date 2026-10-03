@@ -31,8 +31,11 @@ cd r-link-nas/deploy/nas
 
 `init.sh` generates 32 random bytes as a 64-character key in `.env` with mode 0600. Re-running it
 retains the original key and refuses a symlink or invalid existing key. Never distribute `.env`.
-Privately edit it: set `R_LINK_CORS_ORIGINS` to the actual browser origin, such as
-`http://192.168.1.8:8080`, and set the R-File endpoints as described below. Then:
+Privately edit it: append the actual NAS browser origin to `R_LINK_CORS_ORIGINS`, retaining both
+`tauri://localhost` and `http://tauri.localhost` for desktop connections. For example:
+`R_LINK_CORS_ORIGINS=http://localhost:8080,tauri://localhost,http://tauri.localhost,http://192.168.1.8:8080`.
+Append the trusted HTTPS origin too when configuring a reverse proxy; this setting replaces the
+backend's default list, so keep the desktop origins. Set the R-File endpoints as described below. Then:
 
 ```sh
 ./rlink.sh start

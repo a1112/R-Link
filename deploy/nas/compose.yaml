@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
     environment:
       R_LINK_API_TOKEN: ${R_LINK_API_TOKEN:?Run init.sh and preserve the generated .env}
-      R_LINK_CORS_ORIGINS: ${R_LINK_CORS_ORIGINS:-http://localhost:8080}
+      R_LINK_CORS_ORIGINS: ${R_LINK_CORS_ORIGINS:-http://localhost:8080,tauri://localhost,http://tauri.localhost}
       R_LINK_RFILE_URL: ${R_LINK_RFILE_URL:-http://host.docker.internal:18080}
       R_LINK_RFILE_BRIDGE_URL: ${R_LINK_RFILE_BRIDGE_URL:-http://host.docker.internal:18100}
       R_LINK_RFILE_INTERVAL: ${R_LINK_RFILE_INTERVAL:-30}

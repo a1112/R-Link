@@ -241,3 +241,38 @@ def test_install_docs_explain_credentials_retention_and_spk_limitations():
                  'upgrade', 'uninstall', 'HTTPS', 'R_LINK_RFILE_SESSION_TOKEN',
                  'SPK', 'FROM_ENABLE_TO_POSTUNINST', 'FROM_POSTINST_TO_PREUNINST'):
         assert term in text
+
+
+@pytest.mark.parametrize('configuration', ['template', 'compose-fallback'])
+@pytest.mark.parametrize('origin,status', [('http://tauri.localhost', 200), ('tauri://localhost', 200),
+                                          ('http://192.168.1.8:8080', 200), ('https://untrusted.example', 400)])
+def test_nas_api_cors_preflight_keeps_desktop_and_appended_nas_origins(monkeypatch, configuration, origin, status):
+    """Exercise the actual backend middleware with each shipped configuration."""
+    from fastapi.testclient import TestClient
+
+    if configuration == 'template':
+        origins = next(line.split('=', 1)[1] for line in (ROOT / 'deploy/nas/.env.example').read_text().splitlines()
+                       if line.startswith('R_LINK_CORS_ORIGINS='))
+    else:
+        compose = yaml.safe_load((ROOT / 'deploy/nas/compose.yaml').read_text())
+        origins = compose['services']['server']['environment']['R_LINK_CORS_ORIGINS'].split(':-', 1)[1][:-1]
+    # Operators append their NAS browser origin to the shipped desktop origins.
+    monkeypatch.setenv('R_LINK_CORS_ORIGINS', origins + ',http://192.168.1.8:8080')
+    monkeypatch.setenv('R_LINK_API_TOKEN', 'cors-regression-service-key')
+    spec = importlib.util.spec_from_file_location('nas_preflight_main', ROOT / 'R-Link-Server/main.py')
+    backend = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(backend)
+    with TestClient(backend.app) as client:
+        response = client.options('/api/storage/upload?name=cors.txt', headers={
+            'Origin': origin,
+            'Access-Control-Request-Method': 'PUT',
+            'Access-Control-Request-Headers': 'Authorization,Content-Type',
+        })
+        assert response.status_code == status, f'{configuration}: {origin}: {response.text}'
+        if status == 200:
+            assert response.headers['access-control-allow-origin'] == origin
+            assert {'authorization', 'content-type'} <= {item.strip().lower() for item in response.headers['access-control-allow-headers'].split(',')}
+            assert 'PUT' in response.headers['access-control-allow-methods']
+            assert 'access-control-allow-credentials' not in response.headers
+        else:
+            assert 'access-control-allow-origin' not in response.headers
