@@ -26,6 +26,7 @@ export type RouteId =
   | 'frp'
   | 'domains'
   | 'storage'
+  | 'rfile'
   | 'plugins'
   | 'downloads'
   | 'ssh'
@@ -98,6 +99,13 @@ export const routes: RouteConfig[] = [
     description: '共享区浏览、上传和下载',
   },
   {
+    id: 'rfile',
+    label: 'R-File',
+    icon: Folder,
+    title: 'R-File 服务',
+    description: '复用 R-File 网络服务和共享目录',
+  },
+  {
     id: 'plugins',
     label: '插件中心',
     icon: Puzzle,
@@ -131,7 +139,7 @@ export const routes: RouteConfig[] = [
 export const routesByGroupId: Record<string, RouteId[]> = {
   overview: ['dashboard', 'analytics'],
   network: ['network', 'mesh', 'remote', 'ssh', 'console', 'frp', 'domains'],
-  storage: ['storage'],
+  storage: ['storage', 'rfile'],
   extensions: ['plugins', 'downloads'],
 };
 

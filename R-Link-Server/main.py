@@ -32,6 +32,8 @@ from api.services import router as services_router
 from api.mesh import router as mesh_router
 from core.services import Services
 from core.device_sync import DeviceSync
+from core.rfile import RFile
+from api.rfile import router as rfile_router
 from api.ssh import router as ssh_router
 from api.console import router as console_router, set_plugin_manager as set_console_plugin_manager
 
@@ -75,13 +77,19 @@ async def lifespan(app: FastAPI):
     app.state.services = services
     device_sync = DeviceSync(services.state)
     app.state.device_sync = device_sync
+    rfile = RFile()
+    app.state.rfile = rfile
     try:
         await services.start()
         await device_sync.start()
+        await rfile.start()
         yield
     finally:
         try:
-            await device_sync.close()
+            try:
+                await rfile.close()
+            finally:
+                await device_sync.close()
         finally:
             try:
                 await services.close()
@@ -116,6 +124,7 @@ app.include_router(devices_router)
 app.include_router(storage_router)
 app.include_router(services_router)
 app.include_router(mesh_router)
+app.include_router(rfile_router)
 app.include_router(plugins_router)
 app.include_router(system_router)
 app.include_router(sources_router)

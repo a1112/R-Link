@@ -9,6 +9,12 @@ import App from './App';
 
 afterEach(() => { cleanup(); sessionStorage.clear(); localStorage.clear(); });
 
+it('offers the R-File service page alongside the existing shared files page', () => {
+  render(<App />);
+  expect(screen.getByRole('button', { name: 'R-File' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '共享文件' })).toBeTruthy();
+});
+
 it('opens the dashboard immediately and offers service settings without an account flow', () => {
   render(<App />);
   expect(screen.getByText('Local dashboard')).toBeTruthy();

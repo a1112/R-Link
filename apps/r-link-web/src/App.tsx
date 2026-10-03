@@ -16,6 +16,7 @@ const FRPView = React.lazy(() => import('./components/pages/FRPView'));
 const MeshView = React.lazy(() => import('./components/pages/MeshView'));
 const DomainView = React.lazy(() => import('./components/pages/DomainView'));
 const StorageView = React.lazy(() => import('./components/pages/StorageView'));
+const RFileView = React.lazy(() => import('./components/pages/RFileView'));
 const SSHView = React.lazy(() => import('./components/pages/SSHView'));
 const ConsoleView = React.lazy(() => import('./components/pages/ConsoleView'));
 const DownloadsView = React.lazy(() => import('./components/pages/DownloadsView'));
@@ -65,6 +66,7 @@ export default function App() {
       case 'frp': return <FRPView />;
       case 'domains': return <DomainView />;
       case 'storage': return <StorageView />;
+      case 'rfile': return <RFileView />;
       case 'ssh': return null;
       case 'console': return <ConsoleView />;
       case 'downloads': return <DownloadsView />;
