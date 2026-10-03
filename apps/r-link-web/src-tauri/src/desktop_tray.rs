@@ -45,6 +45,90 @@ struct NativeAutostart<'a>(&'a AppHandle);
 #[cfg(windows)]
 const WINDOWS_RUN_KEY: &str = r#"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"#;
 
+#[cfg(any(windows, test))]
+trait WindowsRunRegistration {
+    fn read(&self) -> Result<Option<String>, String>;
+    fn write(&self, command: &str) -> Result<(), String>;
+    fn remove(&self) -> Result<(), String>;
+}
+#[cfg(any(windows, test))]
+fn enable_windows_autostart(
+    registration: &impl WindowsRunRegistration,
+    quoted: &str,
+    plugin_enable: impl FnOnce() -> Result<(), String>,
+) -> Result<(), String> {
+    let previous = registration.read()?;
+    // auto-launch can fail AFTER writing an unquoted Run command. Its result must
+    // never short-circuit repair of our own value.
+    let plugin_result = plugin_enable();
+    let repair = registration
+        .write(quoted)
+        .and_then(|_| verify_windows_registration(registration, Some(quoted)));
+    if let Err(repair_error) = repair {
+        let mut errors = vec![format!("无法保存带引号的自启路径：{repair_error}")];
+        if let Err(plugin_error) = plugin_result {
+            errors.push(plugin_error);
+        }
+        let rollback = match previous.as_deref() {
+            Some(previous) => registration.write(previous),
+            None => registration.remove(),
+        }
+        .and_then(|_| verify_windows_registration(registration, previous.as_deref()));
+        if let Err(rollback_error) = rollback {
+            errors.push(format!("无法恢复原自启配置：{rollback_error}"));
+            // If restoring a previous value fails, remove only R-Link's Run value.
+            if let Err(remove_error) = registration
+                .remove()
+                .and_then(|_| verify_windows_registration(registration, None))
+            {
+                errors.push(format!(
+                    "无法清除 R-Link 自启配置，请在系统启动设置中禁用 R-Link：{remove_error}"
+                ));
+            }
+        }
+        return Err(errors.join("；"));
+    }
+    plugin_result
+}
+#[cfg(any(windows, test))]
+fn verify_windows_registration(
+    registration: &impl WindowsRunRegistration,
+    expected: Option<&str>,
+) -> Result<(), String> {
+    if registration.read()?.as_deref() == expected {
+        Ok(())
+    } else {
+        Err("系统自启注册回读与目标配置不一致".into())
+    }
+}
+#[cfg(windows)]
+struct NativeRunRegistration<'a> {
+    key: &'a winreg::RegKey,
+    name: &'a str,
+}
+#[cfg(windows)]
+impl WindowsRunRegistration for NativeRunRegistration<'_> {
+    fn read(&self) -> Result<Option<String>, String> {
+        match self.key.get_value::<String, _>(self.name) {
+            Ok(value) => Ok(Some(value)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+    fn write(&self, command: &str) -> Result<(), String> {
+        self.key
+            .set_value(self.name, &command)
+            .map_err(|error| error.to_string())
+    }
+    fn remove(&self) -> Result<(), String> {
+        match self.key.delete_value(self.name) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+}
+
 impl Autostart for NativeAutostart<'_> {
     fn is_enabled(&self) -> Result<bool, String> {
         #[cfg(windows)]
@@ -79,22 +163,25 @@ impl Autostart for NativeAutostart<'_> {
             #[cfg(windows)]
             {
                 use winreg::{
-                    enums::{HKEY_CURRENT_USER, KEY_SET_VALUE},
+                    enums::{HKEY_CURRENT_USER, KEY_READ, KEY_SET_VALUE},
                     RegKey,
                 };
                 // Only R-Link's current-user Run value is written directly. The official
                 // 2.5 plugin omits executable quoting; correct it before reporting success.
+                // Resolve the executable before any plugin or registry mutation.
+                let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+                let quoted = windows_startup_command(&executable.display().to_string());
                 let registry = RegKey::predef(HKEY_CURRENT_USER);
                 let (key, _) = registry
-                    .create_subkey_with_flags(WINDOWS_RUN_KEY, KEY_SET_VALUE)
+                    .create_subkey_with_flags(WINDOWS_RUN_KEY, KEY_READ | KEY_SET_VALUE)
                     .map_err(|error| error.to_string())?;
-                manager.enable().map_err(|error| error.to_string())?;
-                let executable = std::env::current_exe().map_err(|error| error.to_string())?;
-                key.set_value(
-                    &self.0.package_info().name,
-                    &windows_startup_command(&executable.display().to_string()),
-                )
-                .map_err(|error| error.to_string())?;
+                let registration = NativeRunRegistration {
+                    key: &key,
+                    name: &self.0.package_info().name,
+                };
+                enable_windows_autostart(&registration, &quoted, || {
+                    manager.enable().map_err(|error| error.to_string())
+                })?;
             }
             #[cfg(not(windows))]
             manager.enable().map_err(|error| error.to_string())?;
@@ -410,6 +497,121 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 mod tests {
     use super::*;
     use std::cell::{Cell, RefCell};
+
+    struct RunRegistration {
+        command: RefCell<Option<String>>,
+        fail_writes: Cell<usize>,
+        ignore_write: bool,
+    }
+    impl RunRegistration {
+        fn new(command: Option<&str>) -> Self {
+            Self {
+                command: RefCell::new(command.map(str::to_owned)),
+                fail_writes: Cell::new(0),
+                ignore_write: false,
+            }
+        }
+    }
+    impl WindowsRunRegistration for RunRegistration {
+        fn read(&self) -> Result<Option<String>, String> {
+            Ok(self.command.borrow().clone())
+        }
+        fn write(&self, command: &str) -> Result<(), String> {
+            let remaining = self.fail_writes.get();
+            if remaining != 0 {
+                self.fail_writes.set(remaining - 1);
+                return Err("Run write denied".into());
+            }
+            if !self.ignore_write {
+                *self.command.borrow_mut() = Some(command.into());
+            }
+            Ok(())
+        }
+        fn remove(&self) -> Result<(), String> {
+            *self.command.borrow_mut() = None;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn partial_plugin_enable_failure_still_repairs_and_verifies_quoted_run_registration() {
+        let registration = RunRegistration::new(None);
+        let executable = r#"C:\Users\Test User\AppData\Local\R-Link\R-Link.exe"#;
+        let quoted = windows_startup_command(executable);
+        let result = enable_windows_autostart(&registration, &quoted, || {
+            // auto-launch 0.5 writes Run first, then can fail at StartupApproved.
+            *registration.command.borrow_mut() = Some(format!("{executable} --autostart"));
+            Err("StartupApproved write denied".into())
+        });
+        assert!(result.unwrap_err().contains("StartupApproved write denied"));
+        assert_eq!(registration.read().unwrap(), Some(quoted));
+    }
+    #[test]
+    fn failed_quotation_restores_previous_registration_after_partial_plugin_enable() {
+        let previous = r#""C:\Old Location\R-Link.exe" --autostart"#;
+        let registration = RunRegistration::new(Some(previous));
+        registration.fail_writes.set(1);
+        let result = enable_windows_autostart(
+            &registration,
+            &windows_startup_command(r#"C:\New Location\R-Link.exe"#),
+            || {
+                *registration.command.borrow_mut() =
+                    Some(r#"C:\New Location\R-Link.exe --autostart"#.into());
+                Err("StartupApproved write denied".into())
+            },
+        );
+        assert!(result.unwrap_err().contains("Run write denied"));
+        assert_eq!(registration.read().unwrap().as_deref(), Some(previous));
+    }
+    #[test]
+    fn failed_quotation_removes_own_new_partial_registration_when_there_was_no_previous_entry() {
+        let registration = RunRegistration::new(None);
+        registration.fail_writes.set(1);
+        let result = enable_windows_autostart(
+            &registration,
+            &windows_startup_command(r#"C:\New Location\R-Link.exe"#),
+            || {
+                *registration.command.borrow_mut() =
+                    Some(r#"C:\New Location\R-Link.exe --autostart"#.into());
+                Ok(())
+            },
+        );
+        assert!(result.is_err());
+        assert_eq!(registration.read().unwrap(), None);
+    }
+    #[test]
+    fn failed_quotation_and_failed_restore_remove_own_partial_entry_as_a_fallback() {
+        let registration =
+            RunRegistration::new(Some(r#""C:\Old Location\R-Link.exe" --autostart"#));
+        registration.fail_writes.set(2);
+        let result = enable_windows_autostart(
+            &registration,
+            &windows_startup_command(r#"C:\New Location\R-Link.exe"#),
+            || {
+                *registration.command.borrow_mut() =
+                    Some(r#"C:\New Location\R-Link.exe --autostart"#.into());
+                Err("StartupApproved write denied".into())
+            },
+        );
+        assert!(result.is_err());
+        assert_eq!(registration.read().unwrap(), None);
+    }
+    #[test]
+    fn quoted_registration_must_be_read_back_before_enable_reports_success() {
+        let mut registration = RunRegistration::new(None);
+        registration.ignore_write = true;
+        let result = enable_windows_autostart(
+            &registration,
+            &windows_startup_command(r#"C:\New Location\R-Link.exe"#),
+            || {
+                *registration.command.borrow_mut() =
+                    Some(r#"C:\New Location\R-Link.exe --autostart"#.into());
+                Ok(())
+            },
+        );
+        assert!(result.is_err());
+        assert_eq!(registration.read().unwrap(), None);
+    }
 
     struct SystemAutostart {
         enabled: Cell<bool>,
