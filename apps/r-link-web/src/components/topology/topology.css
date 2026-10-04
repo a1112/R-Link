@@ -81,6 +81,30 @@
 .topology-detail-note { font-size:12px; color:var(--c-400); margin-top:16px; overflow-wrap:anywhere; line-height:1.7; }
 .topology-detail-actions { display:flex; flex-direction:column; gap:10px; margin-top:24px; }
 .topology-detail-actions h4 { font-size:13px; margin-bottom:3px; }
+.interactive-canvas { min-height:420px; }
+.topology-tools { position:absolute; z-index:2; top:43px; left:14px; right:14px; display:flex; align-items:center; gap:3px; flex-wrap:wrap; width:fit-content; max-width:calc(100% - 28px); padding:4px; border:1px solid var(--c-700); background:var(--c-900); border-radius:9px; }
+.topology-tools button { display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:7px; border-radius:5px; cursor:pointer; color:var(--c-400); }
+.topology-tools button:hover { background:var(--c-800); color:var(--c-100); }
+.topology-tools button[aria-pressed=true] { background:#1683ed30; color:#58b5ff; }
+.topology-tools button:disabled { opacity:.3; cursor:default; }
+.topology-tools .tool-text { font-size:11px; }
+.tool-divider { width:1px; height:17px; background:var(--c-700); margin:0 3px; }
+.topology-interactive-viewport { inset:87px 0 76px; display:block; overflow:hidden; touch-action:none; user-select:none; }
+.topology-interactive-viewport.tool-box { cursor:crosshair; }
+.topology-interactive-viewport .topology-node { cursor:grab; touch-action:none; }
+.topology-interactive-viewport .topology-node:active { cursor:grabbing; }
+.interactive-canvas .topology-canvas-footer { bottom:32px; }
+.topology-selection-box { position:absolute; pointer-events:none; border:1px solid #289cff; background:#289cff25; }
+.topology-interaction-help { position:absolute; bottom:9px; left:14px; right:14px; text-align:center; color:var(--c-500); font-size:10px; pointer-events:none; }
+.topology-save-error { position:absolute; bottom:76px; left:14px; right:14px; color:#f3b94e; background:var(--c-950); padding:8px; font-size:12px; }
+.topology-annotation-dialog { width:min(440px,calc(100vw - 32px)); max-height:calc(100vh - 48px); overflow:auto; margin:auto; border:1px solid var(--c-700); border-radius:15px; padding:24px; background:var(--c-950); color:var(--c-200); box-shadow:0 18px 70px #0008; }
+.topology-annotation-dialog::backdrop { background:#0009; }
+.topology-annotation-dialog form { display:flex; flex-direction:column; gap:16px; }
+.topology-annotation-dialog h2 { font-size:19px; font-weight:600; }
+.topology-annotation-dialog p { font-size:12px; color:var(--c-400); line-height:1.6; overflow-wrap:anywhere; }
+.topology-annotation-dialog label { display:flex; flex-direction:column; gap:8px; font-size:13px; }
+.topology-annotation-dialog input,.topology-annotation-dialog textarea { background:var(--c-900); border:1px solid var(--c-700); border-radius:7px; padding:10px; color:var(--c-100); }
+.topology-annotation-dialog form > div { display:flex; justify-content:flex-end; gap:10px; }
 @media (max-width:1100px) { .topology-home { gap:16px; } .topology-details { flex-basis:270px; padding-left:16px; } .topology-search input { width:150px; } .topology-counts button { padding:8px 10px; } }
 @media (max-width:850px) { .topology-home { flex-direction:column; height:auto; min-height:100%; } .topology-main { min-height:620px; } .topology-details { flex:none; border-left:0; border-top:1px solid var(--c-800); padding:22px 2px; overflow:visible; } .topology-heading h1 { font-size:24px; } .topology-heading-actions { width:100%; } .topology-search { flex:1; min-width:120px; } .topology-search input { width:100%; } .topology-details dl { display:grid; grid-template-columns:1fr 1fr; gap:0 22px; } }
 @media (max-width:520px) { .topology-heading-actions { gap:6px; } .topology-button { padding:9px; font-size:12px; } .topology-counts button { padding:8px; gap:5px; } .topology-counts { width:100%; justify-content:space-between; } .topology-toolbar { gap:9px; } .topology-selects { width:100%; } .topology-selects select { flex:1; max-width:none; min-width:0; } .topology-details dl { display:block; } .topology-legend { gap:8px; } .topology-canvas-footer { left:10px; right:10px; } }

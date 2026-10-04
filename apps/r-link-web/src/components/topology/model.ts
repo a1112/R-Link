@@ -37,7 +37,7 @@ export function filterNodes(nodes: TopologyNode[], filters: Filters) {
   return nodes.filter(node => (filters.status === 'all' || node.status === filters.status)
     && (filters.type === 'all' || node.type === filters.type)
     && (filters.source === 'all' || node.source === filters.source)
-    && [node.name, node.subtitle, node.device?.host, ...(node.device?.tags ?? []), ...(node.device?.mesh_groups ?? []).map(group => group.name)]
+    && [node.name, node.device?.name, node.peer?.deviceName, node.peer?.deviceId, node.subtitle, node.device?.host, ...(node.device?.tags ?? []), ...(node.device?.mesh_groups ?? []).map(group => group.name)]
       .join(' ').toLocaleLowerCase().includes(query));
 }
 

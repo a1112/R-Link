@@ -8,7 +8,7 @@ vi.mock('../../api/system', () => ({ systemApi: { getInfo: vi.fn(async () => ({ 
 import { TopologyView } from '../TopologyView';
 const nas: Device = { id: 'nas', name: 'Registered NAS', host: '::1', port: 22, username: 'owner', revision: 1, status: 'reachable', checked_at: '2026-10-04T00:00:00Z', latency_ms: 3, device_type: 'nas', platform: 'linux', connection_status: 'online' };
 const bridge: RFileStatus = { watch: { url: '', state: 'offline', error: null, checked_at: null }, network: { url: '', state: 'online', controller_registered: true, active_sessions: 0, error: null, checked_at: null }, files: { enabled: false, max_file_bytes: 0, reason: null }, devices: [], config_error: null };
-beforeEach(() => { vi.mocked(devicesApi.list).mockResolvedValue([nas]); vi.mocked(rfileApi.status).mockResolvedValue(bridge); });
+beforeEach(() => { localStorage.clear(); vi.mocked(devicesApi.list).mockResolvedValue([nas]); vi.mocked(rfileApi.status).mockResolvedValue(bridge); });
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 const select = async (name = 'Registered NAS') => fireEvent.click(await screen.findByRole('button', { name: `查看设备：${name}` }));
 
@@ -93,6 +93,18 @@ it('hands off add/edit actions and bounds/reset zoom', async () => {
   fireEvent.click(screen.getByRole('button', { name: '添加设备' })); expect(onManage).toHaveBeenLastCalledWith();
   for (let i = 0; i < 30; i++) fireEvent.click(screen.getByRole('button', { name: '放大' }));
   expect((screen.getByRole('button', { name: '放大' }) as HTMLButtonElement).disabled).toBe(true);
-  expect(screen.getByText('150%')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: '适应视图' })); expect(screen.queryByText('150%')).toBeNull();
+  expect(screen.getByText('300%')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '适应视图' })); expect(screen.queryByText('300%')).toBeNull();
+});
+it('edits a local annotation from details without calling the device configuration API', async () => {
+  const onManage=vi.fn(); render(<TopologyView onManage={onManage} />); await select();
+  fireEvent.click(screen.getByRole('button',{name:'编辑显示名称与备注'}));
+  fireEvent.change(screen.getByLabelText('显示名称'),{target:{value:'Home storage'}});
+  fireEvent.change(screen.getByLabelText('本机备注'),{target:{value:'Local label'}});
+  fireEvent.click(screen.getByRole('button',{name:'保存标注'}));
+  expect(onManage).not.toHaveBeenCalled();
+  expect(screen.getByRole('button',{name:'查看设备：Home storage'})).toBeTruthy();
+  expect(screen.getByText('本机备注：Local label')).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('搜索设备'),{target:{value:'Registered NAS'}});
+  expect(screen.getByRole('button',{name:'查看设备：Home storage'})).toBeTruthy();
 });
