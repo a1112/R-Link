@@ -81,7 +81,7 @@
 .topology-detail-note { font-size:12px; color:var(--c-400); margin-top:16px; overflow-wrap:anywhere; line-height:1.7; }
 .topology-detail-actions { display:flex; flex-direction:column; gap:10px; margin-top:24px; }
 .topology-detail-actions h4 { font-size:13px; margin-bottom:3px; }
-.interactive-canvas { min-height:420px; }
+.interactive-canvas { min-height:350px; }
 .topology-tools { position:absolute; z-index:2; top:43px; left:14px; right:14px; display:flex; align-items:center; gap:3px; flex-wrap:wrap; width:fit-content; max-width:calc(100% - 28px); padding:4px; border:1px solid var(--c-700); background:var(--c-900); border-radius:9px; }
 .topology-tools button { display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:7px; border-radius:5px; cursor:pointer; color:var(--c-400); }
 .topology-tools button:hover { background:var(--c-800); color:var(--c-100); }
