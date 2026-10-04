@@ -1,7 +1,8 @@
 import { listen } from '@tauri-apps/api/event';
 import { isTauriRuntime } from './utils/tauriWindow';
 import type { Device } from './api/devices';
-import React, { useEffect, useState } from "react";
+import type { DeviceInitialAction } from './components/pages/RemoteView';
+import React, { useCallback, useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { getThemeStyles, type ThemeName } from "./constants/theme";
 import type { RouteId } from "./constants/routes";
@@ -22,7 +23,10 @@ const ConsoleView = React.lazy(() => import('./components/pages/ConsoleView'));
 const DownloadsView = React.lazy(() => import('./components/pages/DownloadsView'));
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<RouteId>('dashboard');
+  const [activeTab, setActiveTab] = useState<RouteId>('network');
+  const [deviceAction, setDeviceAction] = useState<DeviceInitialAction | null>(null);
+  const clearDeviceAction = useCallback(() => setDeviceAction(null), []);
+  const navigate = (route: RouteId) => { setDeviceAction(null); setActiveTab(route); };
   const [sshVisited, setSshVisited] = useState(false);
   useEffect(() => { if (activeTab === 'ssh') setSshVisited(true); }, [activeTab]);
   const [sshTarget, setSshTarget] = useState<Device | null>(null);
@@ -31,6 +35,7 @@ export default function App() {
   useEffect(() => {
     const refresh = () => {
       setSshTarget(null);
+      setDeviceAction(null);
       setSshVisited(false);
       setAccessRevision(value => value + 1);
     };
@@ -43,6 +48,7 @@ export default function App() {
     let active = true;
     const unlisten = listen<string>('desktop-action', event => {
       if (!active) return;
+      setDeviceAction(null);
       if (event.payload !== 'settings') window.dispatchEvent(new Event('r-link-close-settings'));
       if (event.payload === 'devices') setActiveTab('remote');
       if (event.payload === 'dashboard') setActiveTab('dashboard');
@@ -59,10 +65,10 @@ export default function App() {
     switch (activeTab) {
       case 'dashboard': return <DashboardView />;
       case 'analytics': return <NetworkMonitor />;
-      case 'network': return <TopologyView onDevices={() => setActiveTab('remote')} onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} />;
+      case 'network': return <TopologyView onManage={device => { setDeviceAction(device ? { kind: 'edit', deviceId: device.id } : { kind: 'add' }); setActiveTab('remote'); }} onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} onRFile={() => setActiveTab('rfile')} onStorage={() => setActiveTab('storage')} />;
       case 'mesh': return <MeshView />;
       case 'plugins': return <PluginsView />;
-      case 'remote': return <RemoteView onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} />;
+      case 'remote': return <RemoteView initialAction={deviceAction} onInitialActionHandled={clearDeviceAction} onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} />;
       case 'frp': return <FRPView />;
       case 'domains': return <DomainView />;
       case 'storage': return <StorageView />;
@@ -77,7 +83,7 @@ export default function App() {
   return (
     <div className="flex h-screen bg-[var(--c-950)] text-[var(--c-200)] font-sans overflow-hidden" style={getThemeStyles(theme)}>
       <Toaster position="bottom-right" theme="dark" />
-      <MainLayout activeRoute={activeTab} onRouteChange={setActiveTab} currentTheme={theme} onThemeChange={setTheme}>
+      <MainLayout activeRoute={activeTab} onRouteChange={navigate} currentTheme={theme} onThemeChange={setTheme}>
         <React.Suspense key={accessRevision} fallback={<div className="p-6">加载中...</div>}>
           <div className={activeTab === 'ssh' ? 'h-full' : 'hidden'}>
             {(sshVisited || activeTab === 'ssh') && <SSHView initialTarget={sshTarget} />}

@@ -35,3 +35,9 @@ Files: App.tsx/App.test.tsx; constants/routes.ts; components/layout/Sidebar.tsx 
 1. Inspect a real running browser preview with actual local APIs and controlled test fixtures for online/offline/unknown and selected details; clearly label fixture-only validation, never seed production inventory. Check desktop and narrow viewport, scrolling, keyboard selection, no overlap and no console errors.
 2. Request independent code review using superpowers:requesting-code-review; address actionable findings and rerun affected checks.
 3. Integrate the reviewed branch into the primary checkout without overwriting unrelated changes. Preserve preview evidence and build output outside temporary worktrees, open the updated preview, and report verification and any remaining native-build/deployment limits accurately.
+
+## Verification — 2026-10-04
+
+Implemented the approved design as the default home, using real registered and R-File inventories, source-isolated polling, truthful management/gateway edges, searchable status/type/source filters, accessible selection/details and existing SSH/Web/edit/add handoffs. No production sample records or new dependencies were added.
+
+Validation: 126 frontend tests across 24 files; 12 desktop-window tests; TypeScript and production build passed. Independent review found no blocking issue; its slow-source loading suggestion was fixed with a regression test. Browser QA covered the actual local backend (one R-File peer, no registered devices), a separate read-only seven-device fixture server, selected NAS details, edit handoff, and 390px mobile layout. Small inventories fit their actual bounds; mobile cards retain readable zoom and selecting a device scrolls to details. Screenshots are preserved locally under `.repository-consolidation-local/topology-qa/` and clearly mark fixture data. The existing large frontend chunk build warning remains.

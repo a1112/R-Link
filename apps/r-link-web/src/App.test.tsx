@@ -15,9 +15,10 @@ it('offers the R-File service page alongside the existing shared files page', ()
   expect(screen.getByRole('button', { name: '共享文件' })).toBeTruthy();
 });
 
-it('opens the dashboard immediately and offers service settings without an account flow', () => {
+it('opens topology immediately and offers service settings without an account flow', () => {
   render(<App />);
-  expect(screen.getByText('Local dashboard')).toBeTruthy();
+  expect(screen.getByText('Topology')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '设备拓扑' }).getAttribute('aria-current')).toBe('page');
   expect(screen.queryByText('个人中心')).toBeNull();
   expect(screen.queryByText('登录')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: '系统设置' }));
@@ -34,7 +35,7 @@ it('preserves the mounted SSH session while navigating to another management pag
   fireEvent.click(screen.getByRole('button', { name: 'SSH 终端' }));
   const marker = await screen.findByRole('textbox', { name: 'SSH session marker' });
   fireEvent.change(marker, { target: { value: 'live-session' } });
-  fireEvent.click(screen.getByRole('button', { name: '仪表盘' }));
+  fireEvent.click(screen.getByRole('button', { name: '系统概览' }));
   expect(screen.getByText('Local dashboard')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'SSH 终端' }));
   expect(screen.getByRole('textbox', { name: 'SSH session marker' })).toBe(marker);
@@ -46,7 +47,7 @@ it('discards a background SSH session when the operator changes the service orig
   fireEvent.click(screen.getByRole('button', { name: 'SSH 终端' }));
   const previous = await screen.findByRole('textbox', { name: 'SSH session marker' });
   fireEvent.change(previous, { target: { value: 'old-server-session' } });
-  fireEvent.click(screen.getByRole('button', { name: '仪表盘' }));
+  fireEvent.click(screen.getByRole('button', { name: '设备拓扑' }));
   fireEvent.click(screen.getByRole('button', { name: '系统设置' }));
   fireEvent.click(screen.getByRole('button', { name: '服务访问' }));
   fireEvent.change(screen.getByLabelText('服务地址'), { target: { value: 'https://other.example.test' } });

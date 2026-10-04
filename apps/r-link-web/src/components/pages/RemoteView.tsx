@@ -9,7 +9,9 @@ const inputStyle = 'w-full min-w-0 rounded border border-[var(--c-700)] bg-[var(
 const buttonStyle = 'rounded border px-3 py-2 disabled:opacity-50';
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
-export function RemoteView({ onSsh }: { onSsh?: (device: Device) => void }) {
+export type DeviceInitialAction = { kind: 'add' } | { kind: 'edit'; deviceId: string };
+export function RemoteView({ onSsh, initialAction, onInitialActionHandled }: { onSsh?: (device: Device) => void; initialAction?: DeviceInitialAction | null; onInitialActionHandled?: () => void }) {
+  const handledInitialAction = useRef<DeviceInitialAction | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [management, setManagement] = useState<DeviceManagementStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,11 +105,22 @@ export function RemoteView({ onSsh }: { onSsh?: (device: Device) => void }) {
   const unavailableGateway = devices.find(device => device.id === unavailableGatewayId);
   const editingPeer = devices.find(device => device.id === editing)?.source === 'netbird';
   const updateDevice = (saved: Device) => setDevices(previous => [...previous.filter(item => item.id !== saved.id), saved]);
-  const edit = (device?: Device) => {
+  const edit = useCallback((device?: Device) => {
     setEditing(device?.id);
     setForm(device ? { name: device.name, host: device.host, port: device.port, username: device.username, device_type: device.device_type ?? 'other', platform: device.platform ?? 'unknown', tags: device.tags ?? [], notes: device.notes ?? '', access_mode: device.access_mode ?? (device.source === 'netbird' ? 'none' : 'ssh'), web_scheme: device.web_scheme ?? 'https', gateway_id: device.gateway_id ?? null } : { ...empty, tags: [] });
     setTagInput((device?.tags ?? []).join(', '));
-  };
+  }, []);
+  useEffect(() => {
+    if (!initialAction || initialAction === handledInitialAction.current || loading || busy || error) return;
+    handledInitialAction.current = initialAction;
+    if (initialAction.kind === 'add') edit();
+    else {
+      const target = devices.find(device => device.id === initialAction.deviceId);
+      if (target) edit(target);
+      else setNotice('所选设备已不在当前清单中，请刷新后重试。');
+    }
+    onInitialActionHandled?.();
+  }, [initialAction, loading, busy, error, devices, edit, onInitialActionHandled]);
 
   return <div className="h-full min-w-0 overflow-auto space-y-5 pb-6">
     <div className="flex flex-wrap justify-between gap-3">

@@ -8,6 +8,22 @@ vi.mock('../../utils/download', () => ({ saveBlob: vi.fn() }));
 beforeEach(() => { vi.mocked(devicesApi.managementStatus).mockResolvedValue({ configured: true, syncing: false, interval_seconds: 60, stale_seconds: 180, last_synced_at: null, last_error: null }); });
 afterEach(() => { cleanup(); vi.resetAllMocks(); vi.useRealTimers(); });
 const device = { id: 'one', name: 'NAS', host: '192.0.2.1', port: 22, username: 'admin', revision: 1, status: 'unchecked' as const, checked_at: null, latency_ms: null };
+it('opens the exact topology edit target once after the inventory loads', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValue([device]);
+  const handled = vi.fn();
+  render(<RemoteView initialAction={{ kind: 'edit', deviceId: 'one' }} onInitialActionHandled={handled} />);
+  expect((await screen.findByLabelText('设备名称') as HTMLInputElement).value).toBe('NAS');
+  expect(handled).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole('button', { name: '取消' }));
+  fireEvent.click(screen.getByRole('button', { name: '刷新列表' }));
+  await waitFor(() => expect(devicesApi.list).toHaveBeenCalledTimes(2));
+  expect(screen.queryByLabelText('设备名称')).toBeNull();
+});
+it('opens the add form from topology without selecting a different device', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValue([device]);
+  render(<RemoteView initialAction={{ kind: 'add' }} />);
+  expect((await screen.findByLabelText('设备名称') as HTMLInputElement).value).toBe('');
+});
 it('adds a persisted device, shows measured status, passes SSH target and confirms deletion', async () => {
   vi.mocked(devicesApi.list).mockResolvedValue([]);
   vi.mocked(devicesApi.save).mockResolvedValue(device);

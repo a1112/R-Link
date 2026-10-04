@@ -44,9 +44,9 @@ export interface RouteConfig {
 export const routes: RouteConfig[] = [
   {
     id: 'dashboard',
-    label: '仪表盘',
+    label: '系统概览',
     icon: LayoutGrid,
-    title: '仪表盘',
+    title: '系统概览',
     description: '系统概览与状态监控',
   },
   {
@@ -58,10 +58,10 @@ export const routes: RouteConfig[] = [
   },
   {
     id: 'network',
-    label: '设备连接视图',
+    label: '设备拓扑',
     icon: Share2,
-    title: '设备连接视图',
-    description: '已登记设备及 TCP 检测结果',
+    title: '设备拓扑',
+    description: '设备状态、管理关系与设备详情',
   },
   {
     id: 'mesh',
@@ -72,9 +72,9 @@ export const routes: RouteConfig[] = [
   },
   {
     id: 'remote',
-    label: '设备列表',
+    label: '设备管理',
     icon: Monitor,
-    title: '远程设备',
+    title: '设备管理',
     description: '管理远程连接与终端节点',
   },
   {
@@ -137,8 +137,8 @@ export const routes: RouteConfig[] = [
 ];
 
 export const routesByGroupId: Record<string, RouteId[]> = {
-  overview: ['dashboard', 'analytics'],
-  network: ['network', 'mesh', 'remote', 'ssh', 'console', 'frp', 'domains'],
+  overview: ['network', 'remote'],
+  network: ['mesh', 'ssh', 'console', 'frp', 'domains', 'dashboard', 'analytics'],
   storage: ['storage', 'rfile'],
   extensions: ['plugins', 'downloads'],
 };
