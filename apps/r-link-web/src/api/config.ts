@@ -5,7 +5,8 @@
 import { getServiceUrl } from './service-url';
 
 const defaultBaseURL = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL ||
-  (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window ? 'http://127.0.0.1:8210' : '')).replace(/\/$/, '');
+  (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window ? 'http://127.0.0.1:8210' :
+    (typeof window !== 'undefined' && /^\/r-link(?:\/|$)/.test(window.location.pathname) ? '/r-link' : ''))).replace(/\/$/, '');
 
 export const API_CONFIG = {
   // 基础 URL 为空，因为 API_ENDPOINTS 已包含完整路径

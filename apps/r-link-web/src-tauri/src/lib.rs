@@ -18,6 +18,10 @@ pub fn run() {
     ));
     #[cfg(desktop)]
     let builder = builder.invoke_handler(tauri::generate_handler![
+        client_device::desktop_device_info,
+        fabric_device::desktop_fabric_info,
+        auth_browser::open_auth_login,
+        auth_transport::desktop_auth_request,
         project_resource_monitor::project_resource_snapshot,
         desktop_tray::desktop_preferences,
         desktop_tray::set_close_to_tray,
@@ -29,6 +33,7 @@ pub fn run() {
         project_resource_monitor::project_resource_snapshot
     ]);
     builder
+        .plugin(tauri_plugin_opener::init())
         .plugin(project_window_chrome::init())
         .plugin(project_resource_monitor::init())
         .setup(|app| {
@@ -58,3 +63,15 @@ mod project_window_chrome;
 
 #[cfg(desktop)]
 mod desktop_tray;
+
+#[cfg(desktop)]
+mod client_device;
+
+#[cfg(desktop)]
+mod fabric_device;
+
+#[cfg(desktop)]
+mod auth_browser;
+
+#[cfg(desktop)]
+mod auth_transport;

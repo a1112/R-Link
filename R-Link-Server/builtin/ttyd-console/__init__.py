@@ -138,6 +138,9 @@ class TTYDManager:
         return self.process is not None and self.process.poll() is None
 
     def start(self) -> Dict[str, Any]:
+        from core import identity
+        if identity.enabled():
+            return {'error': 'Console requires an authenticated proxy in multi-user mode; use authenticated SSH'}
         """启动 ttyd 服务"""
         if self.is_running():
             return {

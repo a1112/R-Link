@@ -8,6 +8,22 @@ vi.mock('../../utils/download', () => ({ saveBlob: vi.fn() }));
 beforeEach(() => { vi.mocked(devicesApi.managementStatus).mockResolvedValue({ configured: true, syncing: false, interval_seconds: 60, stale_seconds: 180, last_synced_at: null, last_error: null }); });
 afterEach(() => { cleanup(); vi.resetAllMocks(); vi.useRealTimers(); });
 const device = { id: 'one', name: 'NAS', host: '192.0.2.1', port: 22, username: 'admin', revision: 1, status: 'unchecked' as const, checked_at: null, latency_ms: null };
+it('protects Fabric managed addresses and never offers them as LAN gateways or NetBird links', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValue([{ ...device, source: 'fabric', name: 'Fabric Mac', host: '10.66.0.2', peer_id: 'fabric-peer' }]);
+  render(<RemoteView />); await screen.findByText('Fabric Mac');
+  expect(screen.queryByRole('button', { name: '关联组网节点' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '编辑' }));
+  expect((screen.getByLabelText('主机名或 IP') as HTMLInputElement).disabled).toBe(true);
+  expect((screen.getByLabelText('接入网关') as HTMLSelectElement).disabled).toBe(true);
+});
+it('keeps daily device operations but hides NetBird membership management from operators', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValue([device, { ...device, id: 'peer-device', name: 'Mesh Peer', source: 'netbird', peer_id: 'peer-1', connection_status: 'online' }]);
+  render(<RemoteView canManageMembership={false} />);
+  await screen.findByText('Mesh Peer');
+  expect(screen.getAllByRole('button', { name: '检测端口' })).toHaveLength(2);
+  expect(screen.queryByRole('button', { name: '关联组网节点' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '撤销入网' })).toBeNull();
+});
 it('opens the exact topology edit target once after the inventory loads', async () => {
   vi.mocked(devicesApi.list).mockResolvedValue([device]);
   const handled = vi.fn();

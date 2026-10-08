@@ -369,6 +369,15 @@ async def ssh_websocket(
     conn.owner_id = websocket.scope["r_link_ws_claims"]["sub"]
     active_connections[connection_id] = conn
 
+    async def guard_session():
+        while True:
+            await asyncio.sleep(1)
+            if not access_manager.websocket_identity_valid(websocket.scope['r_link_ws_claims']):
+                await conn.close()
+                return
+
+    session_guard = asyncio.create_task(guard_session())
+
     try:
         # 等待认证消息
         auth_message = await asyncio.wait_for(websocket.receive_json(), timeout=30)
@@ -411,6 +420,9 @@ async def ssh_websocket(
                     timeout=300  # 5 分钟超时
                 )
 
+                if not access_manager.websocket_identity_valid(websocket.scope['r_link_ws_claims']):
+                    break
+
                 msg_type = message.get("type")
 
                 if msg_type == "data":
@@ -444,6 +456,8 @@ async def ssh_websocket(
 
     finally:
         # 清理连接
+        session_guard.cancel()
+        await asyncio.gather(session_guard, return_exceptions=True)
         manager.update_connection_status(connection_id, SSHConnectionStatus.DISCONNECTED)
         manager.close_connection(connection_id)
         await conn.close()

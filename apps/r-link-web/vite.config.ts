@@ -66,21 +66,22 @@ export default defineConfig({
     host: '127.0.0.1',
     
     proxy: {
+      // Preserve the local page Host so same-origin POSTs also work on custom dev ports.
       '/config': {
         target: 'http://127.0.0.1:8210',
-        changeOrigin: true,
+        changeOrigin: false,
         secure: false,
         ws: true,
       },
       '/api': {
         target: 'http://127.0.0.1:8210',
-        changeOrigin: true,
+        changeOrigin: false,
         secure: false,
         ws: true,
       },
       '/health': {
         target: 'http://127.0.0.1:8210',
-        changeOrigin: true,
+        changeOrigin: false,
         secure: false,
       },
     },

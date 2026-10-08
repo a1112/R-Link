@@ -153,6 +153,9 @@ def raw_device(db, device_id):
 
 
 def observation_status(db, row):
+    if row['source'] == 'fabric':
+        from core.fabric_inventory import connection_state
+        return connection_state(row)
     if row['source'] != 'netbird' or row['provider'] != current_provider():
         return 'unknown'
     if row['connection_status'] == 'revoked':
@@ -174,6 +177,8 @@ def public_device(db, row):
     item['tags'] = json.loads(item['tags'])
     item['mesh_groups'] = json.loads(item['mesh_groups'])
     item['connection_status'] = observation_status(db, row)
+    if row['source'] == 'fabric':
+        item['provider_url'] = row['provider']
     item['gateway_status'] = None
     if item['gateway_id']:
         gateway = db.execute('SELECT * FROM devices WHERE id=?', (item['gateway_id'],)).fetchone()
@@ -228,17 +233,17 @@ def save_device(data: DeviceInput, device_id=None):
             db.execute('BEGIN IMMEDIATE')
             if device_id:
                 existing = raw_device(db, device_id)
-                if existing['source'] == 'netbird' and data.host != existing['host']:
-                    raise HTTPException(409, 'NetBird 直接节点地址由管理服务同步，请在上游修改节点地址')
+                if existing['source'] in {'netbird', 'fabric'} and data.host != existing['host']:
+                    raise HTTPException(409, '组网直接节点地址由管理服务分配，不能手动修改')
                 values = data.model_dump()
                 for key in (*METADATA, 'gateway_id'):
                     if key not in data.model_fields_set:
                         values[key] = json.loads(existing[key]) if key == 'tags' else existing[key]
                 validate_gateway(db, values['gateway_id'], device_id)
-                if existing['source'] == 'netbird' and values['gateway_id']:
-                    raise HTTPException(409, 'A direct NetBird device cannot be a gateway child')
+                if existing['source'] in {'netbird', 'fabric'} and values['gateway_id']:
+                    raise HTTPException(409, 'A direct mesh device cannot be a gateway child')
                 values['tags'] = json.dumps(values['tags'])
-                values['source'] = existing['source'] if existing['source'] == 'netbird' else ('gateway' if values['gateway_id'] else 'manual')
+                values['source'] = existing['source'] if existing['source'] in {'netbird', 'fabric'} else ('gateway' if values['gateway_id'] else 'manual')
                 values['name_override'] = 1
                 if 'platform' in data.model_fields_set:
                     values['platform_override'] = 1

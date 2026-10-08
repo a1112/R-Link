@@ -18,7 +18,9 @@ python -m pip install -r R-Link-Server/requirements-test.txt
 
 本地使用无需云账号或数据库配置，启动后直接进入管理界面。服务端默认只监听 `127.0.0.1`，检查客户端地址、Host 和浏览器来源。需要自定义 API 地址时，复制 `apps/r-link-web/.env.example` 为 `.env.local` 并设置 `VITE_API_BASE_URL`。
 
-远程部署（包括通过反向代理提供服务）必须先设置随机的 `R_LINK_API_TOKEN`，再按需设置 `R_LINK_HOST`。在客户端“系统设置 → 服务访问”中填写相同密钥；密钥只保存在当前浏览器会话，并且只发送到配置的 API 地址。配置密钥后，本机请求也需提供密钥。远程访问应使用 HTTPS；这是单一服务操作员访问模式，没有云账号或用户角色。
+远程部署使用 HTTPS，并选择服务密钥或多用户登录。服务密钥模式设置随机的 `R_LINK_API_TOKEN`，在客户端“系统设置 → 服务访问”填写相同密钥；密钥只保存在当前浏览器会话，并且只发送到配置的 API 地址。多用户模式设置 `R_LINK_AUTH_MODE=oidc`，为 R-Link 注册独立 Keycloak confidential client，浏览器和桌面版都通过统一身份源登录。R-Auth 账户中心可共用这个身份源，R-Link 自己维护会话与业务权限，不复用 R-Auth Cookie。
+
+多用户先按共享设备库管理：新用户等待批准，管理员可授予只读、操作员或管理员权限，并可禁用账号；权限同时由服务端接口和 WebSocket 执行。更换账号或退出会清除旧会话，拓扑标注按账号隔离并保留旧本地布局。完整配置、授权范围和桌面登录流程见[多用户认证](R-Link-Server/AUTHENTICATION.md)。
 ```sh
 # 已激活 Python 环境的终端
 npm run dev:server
@@ -32,7 +34,7 @@ SSH 使用服务端用户的 `~/.ssh/known_hosts` 校验主机密钥，也可通
 
 ## 设备与托盘管理
 
-统一设备管理支持类型、平台、标签、备注和服务入口，自动同步 NetBird 节点并显示带时效的组网状态，可关联网关后的设备和明确撤销入网。安装好的客户端可在“系统设置 → 服务访问”填写云端服务地址；各设备安装 NetBird，手机也可通过浏览器管理。云端配置、各平台安装、网关接入和升级备份见[全部设备接入说明](docs/device-management-20261003.md)。
+统一设备管理支持类型、平台、标签、备注和服务入口。自研 R-Link 组网由本仓库的 `agent/` 提供：客户端生成并保留 WireGuard 私钥，通过一次性凭据登记，使用自有候选交换、STUN、认证 UDP 打洞和端到端加密 WebSocket 中转；根据实测 RTT 选择仍可用的路径并自动恢复。控制面、传输测试、真实网卡、WireGuard 握手和业务端口检测分别显示，过期状态不会保持在线。设备安装、服务权限、状态文件和路径规则见[原生组网 Agent](agent/README.md)。NetBird 接入保留为独立兼容提供方，旧版网关接入说明见[全部设备接入说明](docs/device-management-20261003.md)。
 
 设备列表支持添加、编辑、删除和持久保存地址，按需从服务端检测指定 TCP 端口，并可将地址带入 SSH 连接表单。默认数据库为 `R-Link-Server/config/devices.sqlite3`，可用 `R_LINK_DEVICES_DB` 指定位置；不保存设备密码或私钥。检测结果带时间，不代表整台设备健康。仪表盘按网卡显示真实流量采样，不再展示虚构的隧道数量。
 
@@ -67,10 +69,11 @@ npm run tauri:build
 | --- | --- |
 | `apps/r-link-web/` | Web 客户端与 Tauri 桌面工程 |
 | `R-Link-Server/` | API、认证、SSH、插件管理 |
+| `agent/` | 自研组网 Agent、STUN、打洞与密文中转客户端 |
 | `demos/` | 网络、存储、串流、隧道演示 |
 | `docs/` | 开发文档、审查结果与迁移记录 |
 | `scripts/` | 本地启动与迁移完整性验证 |
 
-FRP、域名/HTTPS、后台下载和 NetBird 组网管理已接入真实服务端：支持 TCP/UDP 隧道启停、Cloudflare DNS 管理、Caddy 自动 HTTPS、持久化下载队列，以及 NetBird 节点、分组、入网密钥、访问策略、网络资源与路由管理。组网需要另行部署 NetBird 控制面并在设备上安装 Agent。工具安装、环境变量、API、Docker/systemd 部署与功能边界见[服务端实现与部署](docs/server-implementation-20260922.md)。这是单机单管理员模式，没有多用户或角色体系；同一数据目录只运行一个服务进程。
+FRP、域名/HTTPS、后台下载和 NetBird 组网管理已接入真实服务端：支持 TCP/UDP 隧道启停、Cloudflare DNS 管理、Caddy 自动 HTTPS、持久化下载队列，以及 NetBird 节点、分组、入网密钥、访问策略、网络资源与路由管理。组网需要另行部署 NetBird 控制面并在设备上安装 Agent。工具安装、环境变量、API、Docker/systemd 部署与功能边界见[服务端实现与部署](docs/server-implementation-20260922.md)。多用户认证与角色配置以[当前认证说明](R-Link-Server/AUTHENTICATION.md)为准；设备和业务数据仍在同一共享管理域，同一数据目录只运行一个业务服务进程。
 
-尚未提供远程设备 SFTP/WebDAV 或点对点文件传输。R-Link 不内置 WireGuard、信令或中继服务；跨 NAT 组网由接入的 NetBird 提供，其控制面和 Agent 不作为 Git 子模块附带，按官方文档部署。Sunshine、Moonlight、RustDesk、FRP、Rclone 等第三方程序也需按各自文档安装并遵循许可证。
+自研组网目前使用 IPv4 三层虚拟子网；控制信令和密文中转由 `/api/fabric` 提供，自有 STUN 使用 UDP 51821，客户端打洞和数据端口默认 UDP 51822。数据面复用标准 WireGuard 库，客户端及路径控制代码在本仓库维护，不依赖 NetBird 运行服务。Windows 采用官方签名 Wintun，macOS 使用 utun，安装系统网络服务仍需管理员权限。自研提供方目前没有 LAN 网关、出口节点或全局 DNS 功能；NetBird 的旧功能不会伪装成已由自研实现。已有 SSH 和共享文件能力可使用实际虚拟地址，专门的远程设备 SFTP/WebDAV 与点对点文件传输界面尚未提供。Sunshine、Moonlight、RustDesk、FRP、Rclone 等独立程序仍需按各自文档安装。

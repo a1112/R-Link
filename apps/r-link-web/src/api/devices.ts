@@ -9,7 +9,7 @@ export type DeviceInput = {
 };
 export type Device = DeviceInput & {
   id: string; revision: number; status: 'unchecked' | 'reachable' | 'unreachable'; checked_at: string | null; latency_ms: number | null;
-  source?: 'manual' | 'netbird' | 'gateway'; peer_id?: string | null; connection_status?: ConnectionStatus;
+  source?: 'manual' | 'netbird' | 'fabric' | 'gateway'; peer_id?: string | null; provider_url?: string | null; connection_status?: ConnectionStatus;
   last_seen?: string | null; synced_at?: string | null; mesh_groups?: { id: string; name: string }[]; gateway_status?: ConnectionStatus | null;
 };
 export type DeviceInventory = { version: 1 | 2; devices: DeviceInput[] };

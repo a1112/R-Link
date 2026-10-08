@@ -4,6 +4,8 @@ import { ServiceAccessSettings } from './ServiceAccessSettings';
 import { http } from '../../api/client';
 import { apiOrigin, getServiceKey, setServiceKey } from '../../api/service-access';
 import { sshSocketUrl } from '../../api/ssh-socket';
+import { updateAccount } from '../../api/account-access';
+const legacy = () => updateAccount({ status: 'ready', config: { mode: 'service', login_enabled: false, desktop_login_enabled: false }, session: null, error: '' });
 
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear();
@@ -17,6 +19,7 @@ it('saves a cloud address for existing HTTP and SSH clients with an origin-scope
   fireEvent.change(screen.getByLabelText('服务访问密钥'), { target: { value: 'cloud-private' } });
   fireEvent.click(screen.getByRole('button', { name: '保存连接' }));
   expect(apiOrigin()).toBe('https://cloud.example.test');
+  legacy();
   await http.get('/api/devices');
   expect(fetch).toHaveBeenCalledWith('https://cloud.example.test/api/devices', expect.any(Object));
   expect(new Headers(vi.mocked(fetch).mock.calls[0][1]?.headers).get('Authorization')).toBe('Bearer cloud-private');
@@ -32,11 +35,12 @@ it('does not copy the previous server key when changing the service address', as
   expect((screen.getByLabelText('服务访问密钥') as HTMLInputElement).value).toBe('');
   fireEvent.click(screen.getByRole('button', { name: '保存连接' }));
   expect(getServiceKey()).toBe('');
+  legacy();
   await http.get('/api/devices');
   expect(new Headers(vi.mocked(fetch).mock.calls[0][1]?.headers).has('Authorization')).toBe(false);
 });
 
-it.each(['http://remote.example.test', 'https://user:password@cloud.example.test', 'https://cloud.example.test/api', 'https://cloud.example.test?token=secret', 'javascript:alert(1)'])('rejects an unsafe service address %s before changing active requests', address => {
+it.each(['http://remote.example.test', 'https://user:password@cloud.example.test', 'https://cloud.example.test/a%2Fb', 'https://cloud.example.test?token=secret', 'javascript:alert(1)'])('rejects an unsafe service address %s before changing active requests', address => {
   const previous = apiOrigin();
   render(<ServiceAccessSettings />);
   fireEvent.change(screen.getByLabelText('服务地址'), { target: { value: address } });
@@ -44,6 +48,15 @@ it.each(['http://remote.example.test', 'https://user:password@cloud.example.test
   expect(screen.getByRole('alert')).toBeTruthy();
   expect(apiOrigin()).toBe(previous);
   expect(fetch).not.toHaveBeenCalled();
+});
+
+it('supports a deployed service path and scopes HTTP and SSH requests to it', async () => {
+  render(<ServiceAccessSettings />);
+  fireEvent.change(screen.getByLabelText('服务地址'), { target: { value: 'https://175.178.16.90/r-link/' } });
+  fireEvent.click(screen.getByRole('button', { name: '保存连接' }));
+  legacy(); await http.get('/api/devices');
+  expect(fetch).toHaveBeenCalledWith('https://175.178.16.90/r-link/api/devices', expect.any(Object));
+  expect(sshSocketUrl()).toBe('wss://175.178.16.90/r-link/api/ssh/connect');
 });
 
 it('allows explicit loopback HTTP and clearing the address to restore the default', () => {

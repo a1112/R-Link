@@ -8,10 +8,11 @@ export interface SidebarProps {
   onToggle: () => void;
   activeRoute: RouteId;
   onRouteChange: (route: RouteId) => void;
+  allowedRoutes?: RouteId[];
 }
 const groups = [ ['overview', '概览'], ['network', '网络管理'], ['storage', '数据存储'], ['extensions', '扩展应用'] ];
 
-export function Sidebar({ collapsed, onToggle, activeRoute, onRouteChange }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, activeRoute, onRouteChange, allowedRoutes }: SidebarProps) {
   return <motion.div animate={{ width: collapsed ? 64 : 216 }} className="bg-[var(--c-950)] border-r border-[var(--c-800)] flex flex-col flex-shrink-0 z-20 relative">
     <div className={`p-6 flex items-center ${collapsed ? 'justify-center flex-col gap-4' : 'justify-between'}`}>
       <div className="flex items-center gap-3">
@@ -23,9 +24,9 @@ export function Sidebar({ collapsed, onToggle, activeRoute, onRouteChange }: Sid
       </button>
     </div>
     <nav className="flex-1 px-3 space-y-1 overflow-y-auto overflow-x-hidden">
-      {groups.map(([id, label]) => <div key={id}>
+      {groups.filter(([id]) => routesByGroupId[id].some(route => !allowedRoutes || allowedRoutes.includes(route))).map(([id, label]) => <div key={id}>
         {!collapsed && <div className="px-3 mb-2 mt-6 text-[10px] font-semibold text-[var(--c-600)]">{label}</div>}
-        {routesByGroupId[id].map(routeId => {
+        {routesByGroupId[id].filter(route => !allowedRoutes || allowedRoutes.includes(route)).map(routeId => {
           const route = routes.find(item => item.id === routeId)!;
           return <SidebarItem key={route.id} icon={route.icon} label={route.label} active={activeRoute === route.id} onClick={() => onRouteChange(route.id)} collapsed={collapsed} badge={route.badge} />;
         })}

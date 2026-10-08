@@ -4,7 +4,7 @@ export function apiOrigin(): string {
   return new URL(API_CONFIG.baseURL || '/', window.location.href).origin;
 }
 
-const storageKey = () => `r-link-service-key:${apiOrigin()}`;
+const storageKey = () => `r-link-service-key:${new URL(API_CONFIG.baseURL || '/', window.location.href).toString().replace(/\/$/, '')}`;
 
 export function getServiceKey(): string {
   return sessionStorage.getItem(storageKey()) || '';

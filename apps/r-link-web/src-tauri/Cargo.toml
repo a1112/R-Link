@@ -18,6 +18,7 @@ monitor-sysinfo = { package = "sysinfo", version = "0.33", default-features = fa
 tauri = { version = "2", features = ["devtools", "tray-icon"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tauri-plugin-opener = "2"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
@@ -26,6 +27,7 @@ custom-protocol = ["tauri/custom-protocol"]
 tauri-plugin-single-instance = "2"
 # 2.6+ requires Rust 1.90; retain compatibility with the project's Rust 1.89 build.
 tauri-plugin-autostart = "=2.5.1"
+reqwest = { version = "=0.13.5", default-features = false, features = ["json", "native-tls"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"

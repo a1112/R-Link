@@ -2,12 +2,15 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { servicesApi } from './services';
 import { setServiceUrl } from './service-url';
 import { setServiceKey } from './service-access';
+import { updateAccount } from './account-access';
+const legacy = () => updateAccount({ status: 'ready', config: { mode: 'service', login_enabled: false, desktop_login_enabled: false }, session: null, error: '' });
 
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
   setServiceUrl('https://cloud.example.test');
   setServiceKey('cloud-key');
+  legacy();
   vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response('{}')));
 });
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); sessionStorage.clear(); });
@@ -35,11 +38,13 @@ it('sends service management requests through the cloud API namespace', async ()
 
 it('downloads from the current cloud API with only that origin’s key', async () => {
   setServiceUrl('https://second.example.test');
+  legacy();
   vi.mocked(fetch).mockResolvedValueOnce(new Response('first file'));
   expect((await servicesApi.downloadFile('download-id')).size).toBe(10);
   expect(fetch).toHaveBeenLastCalledWith('https://second.example.test/api/downloads/download-id/file', expect.any(Object));
   expect(new Headers(vi.mocked(fetch).mock.calls[0][1]?.headers).has('Authorization')).toBe(false);
   setServiceKey('second-key');
+  legacy();
   vi.mocked(fetch).mockResolvedValueOnce(new Response('second file'));
   expect((await servicesApi.downloadFile('download-id')).size).toBe(11);
   expect(new Headers(vi.mocked(fetch).mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer second-key');

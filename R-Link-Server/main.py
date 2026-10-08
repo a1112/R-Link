@@ -21,6 +21,7 @@ import uvicorn
 
 from core.plugin_manager import PluginManager
 from core.auth import allowed_origins, server_host
+from core import identity
 from core.paths import PLUGINS_DIR, BUILTIN_DIR, CONFIG_DIR, LOGS_DIR
 from api.plugins import router as plugins_router, set_plugin_manager
 from api.system import router as system_router
@@ -30,6 +31,7 @@ from api.devices import router as devices_router
 from api.storage import router as storage_router
 from api.services import router as services_router
 from api.mesh import router as mesh_router
+from api.fabric import router as fabric_router
 from core.services import Services
 from core.device_sync import DeviceSync
 from core.rfile import RFile
@@ -113,10 +115,25 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins(),
-    allow_credentials=False,
+    allow_credentials=identity.enabled(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware('http')
+async def auth_response_headers(request, call_next):
+    response = await call_next(request)
+    if '/api/auth/' in request.url.path:
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+    if '/api/fabric/' in request.url.path:
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 # 注册路由
 app.include_router(auth_router)
@@ -124,6 +141,7 @@ app.include_router(devices_router)
 app.include_router(storage_router)
 app.include_router(services_router)
 app.include_router(mesh_router)
+app.include_router(fabric_router)
 app.include_router(rfile_router)
 app.include_router(plugins_router)
 app.include_router(system_router)
