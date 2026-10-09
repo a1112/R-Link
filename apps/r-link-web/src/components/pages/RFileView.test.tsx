@@ -74,7 +74,13 @@ it('uploads selected bytes and downloads a blob through authenticated R-Link end
   expect(call[1]?.redirect).toBe('error');
   expect(new Headers(call[1]?.headers).get('Authorization')).toBe('Bearer operator-key');
   fireEvent.click(screen.getByRole('button', { name: '下载 actual.txt' }));
-  await waitFor(() => expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'actual.txt'));
+  // Response.blob() and jsdom can expose different Blob constructors.
+  await waitFor(() => expect(saveBlob).toHaveBeenCalledWith(
+    expect.objectContaining({ size: 5, type: 'text/plain;charset=utf-8' }), 'actual.txt'));
+  expect(saveBlob).toHaveBeenCalledTimes(1);
+  const [downloaded] = vi.mocked(saveBlob).mock.calls[0];
+  expect(Object.prototype.toString.call(downloaded)).toBe('[object Blob]');
+  expect(await downloaded.text()).toBe('hello');
   const download = fetchMock.mock.calls.find(([url]) => String(url).includes('/download'))!;
   expect(new Headers(download[1]?.headers).get('Authorization')).toBe('Bearer operator-key');
 });
