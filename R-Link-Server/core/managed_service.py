@@ -75,11 +75,15 @@ class ManagedService:
             raise HTTPException(503, self.error) from None
         process = self.process
         try:
+            image = str(Path(args[0]).resolve())
             try:
-                created = psutil.Process(process.pid).create_time()
+                native = psutil.Process(process.pid)
+                created = native.create_time()
+                # Launchers can exec a different image (e.g. macOS Python.app).
+                image = native.exe()
             except psutil.NoSuchProcess:
                 created = 0
-            self.state.save('process', {'pid': process.pid, 'created': created, 'executable': str(Path(args[0]).resolve()),
+            self.state.save('process', {'pid': process.pid, 'created': created, 'executable': image,
                                         'cwd': str(self.directory)}, self.key)
         except Exception:
             # If persistence fails, do not leave an untracked child behind.
@@ -110,6 +114,16 @@ class ManagedService:
         await asyncio.sleep(0.2)
         if self.process.poll() is not None:
             raise HTTPException(502, self.status()['error'])
+        try:
+            native = psutil.Process(process.pid)
+            if abs(native.create_time() - created) >= 0.01:
+                raise RuntimeError('Owned service process identity changed during startup')
+            # A launcher may still have been running during the first snapshot.
+            self.state.save('process', {'pid': process.pid, 'created': created, 'executable': native.exe(),
+                                        'cwd': str(self.directory)}, self.key)
+        except Exception:
+            await self.stop()
+            raise
         return self.status()
 
     async def stop(self):

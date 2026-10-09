@@ -398,7 +398,8 @@
       "source_git_blob": "cf36edacad1b493bea57dff0ce6ac43d67e2d47c",
       "disposition": "migrated",
       "target_path": "apps/r-link-web/src/components/common/SidebarItem.tsx",
-      "target_git_blob": "cf36edacad1b493bea57dff0ce6ac43d67e2d47c"
+      "target_git_blob": "cf36edacad1b493bea57dff0ce6ac43d67e2d47c",
+      "archive_path": "docs/repository-consolidation/R-Link-Web/originals/src/components/common/SidebarItem.tsx.source.txt"
     },
     {
       "source_path": "src/components/common/StatCard.tsx",

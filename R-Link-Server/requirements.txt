@@ -24,3 +24,6 @@ asyncssh>=2.14.0
 # OIDC authorization-code/PKCE and signed ID-token validation.
 Authlib==1.8.0
 joserfc==1.7.5
+
+# Opt-in R-SDK read bridge, source snapshot recorded in interop_bridge/SOURCE.json.
+jsonschema==4.26.0

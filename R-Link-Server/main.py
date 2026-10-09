@@ -149,6 +149,10 @@ app.include_router(sources_router)
 app.include_router(ssh_router)
 app.include_router(console_router)
 
+if os.getenv("R_LINK_INTEROP_READ_ENABLED") == "1":
+    from api.interop import router as interop_router
+    app.include_router(interop_router)
+
 
 # 根路径
 @app.get("/")
