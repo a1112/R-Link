@@ -1,7 +1,12 @@
 # Opt-in R-SDK read boundary candidate
 
 This local stage consumes only R-SDK commit
-`cc9fed2027c81a43e69b74d923b7fd13cbdf6d81`. Candidate 3 replaces the rejected first draft and reports repairs to the reviewed
+`d321b6ed427472533f5e1a26a75551f69d0726ea`. It supersedes
+`cc9fed2027c81a43e69b74d923b7fd13cbdf6d81` with a Node-only absolute delivery
+deadline repair. The vendored Python implementation, schema and upstream notes
+are byte-identical at both commits. This repository has no tracked Node interop
+consumer; the previous native regression evidence remains applicable.
+Candidate 3 replaces the rejected first draft and reports repairs to the reviewed
 parser, client-generation, mutable-request, output-binding and deadline defects.
 Fresh independent review remains pending. Do not release or enable it as a
 production read integration. The unchanged migration note is included as
