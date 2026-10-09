@@ -5,6 +5,7 @@ import logging
 import sqlite3
 import uuid
 
+import anyio
 from fastapi import APIRouter, Depends, HTTPException, Request, Security, WebSocket, WebSocketDisconnect
 from core import fabric, fabric_inventory
 from core.auth import require_admin, require_auth, security
@@ -192,10 +193,12 @@ async def relay(websocket: WebSocket):
             fabric.relay.unregister(connection)
         for task in tasks:
             task.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
-        if accepted:
-            try:
-                await websocket.close()
-            except RuntimeError:
-                pass
+        # Shield cleanup from ASGI level cancellation, retaining a close deadline.
+        with anyio.move_on_after(5, shield=True):
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            if accepted:
+                try:
+                    await websocket.close()
+                except RuntimeError:
+                    pass

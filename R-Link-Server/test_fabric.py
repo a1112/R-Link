@@ -6,11 +6,13 @@ import secrets
 import time
 import uuid
 
+import anyio
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from starlette.websockets import WebSocketDisconnect
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
+from api.fabric import relay
 from core import fabric, identity, devices, fabric_inventory
 from main import app
 
@@ -185,6 +187,72 @@ def test_relay_forwards_opaque_bytes_and_injects_only_authenticated_source():
                 assert received[16:] == payload
                 assert fabric.relay.connected(alice['peer_id'])
     assert not fabric.relay.connected(alice['peer_id'])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('close_blocks', [False, True])
+async def test_relay_cancellation_drains_owned_tasks_before_returning(monkeypatch, close_blocks):
+    peer = direct_enroll()
+    incoming = asyncio.Queue()
+    incoming.put_nowait({'type': 'websocket.connect'})
+    sent, children, scope = [], [], []
+    started, cleanup_started = asyncio.Event(), asyncio.Event()
+    cleanup_release, cleanup_finished = asyncio.Event(), asyncio.Event()
+    close_finished = asyncio.Event()
+    real_create = asyncio.create_task
+
+    def create(coroutine, *args, **kwargs):
+        task = real_create(coroutine, *args, **kwargs)
+        if coroutine.__qualname__.startswith('relay.<locals>.'):
+            children.append(task)
+            if len(children) == 3:
+                started.set()
+        return task
+
+    async def receive():
+        try:
+            return await incoming.get()
+        except asyncio.CancelledError:
+            cleanup_started.set()
+            await cleanup_release.wait()
+            cleanup_finished.set()
+            raise
+
+    async def send(message):
+        sent.append(message)
+        if message['type'] == 'websocket.close' and close_blocks:
+            try:
+                await asyncio.Event().wait()
+            finally:
+                close_finished.set()
+
+    websocket = WebSocket({'type': 'websocket', 'path': '/api/fabric/relay', 'query_string': b'',
+                           'headers': [(b'authorization', token_headers(peer)['Authorization'].encode())]}, receive, send)
+
+    async def run():
+        with anyio.CancelScope() as owner:
+            scope.append(owner)
+            await relay(websocket)
+
+    monkeypatch.setattr(asyncio, 'create_task', create)
+    handler = real_create(run())
+    try:
+        await asyncio.wait_for(started.wait(), 2)
+        scope[0].cancel()
+        await asyncio.wait_for(cleanup_started.wait(), 2)
+        assert not fabric.relay.connected(peer['peer_id'])
+        assert not handler.done()
+        cleanup_release.set()
+        await asyncio.wait_for(handler, 7)
+        assert cleanup_finished.is_set()
+        assert all(child.done() for child in children)
+        assert sent[-1]['type'] == 'websocket.close'
+        assert not close_blocks or close_finished.is_set()
+    finally:
+        cleanup_release.set()
+        if scope:
+            scope[0].cancel()
+        await asyncio.wait_for(handler, 2)
 
 
 def test_relay_rejects_cross_group_target_master_key_and_query_credentials():
