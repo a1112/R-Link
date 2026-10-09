@@ -465,25 +465,37 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "not": {
+        "pattern": "[\\r\\n\\u2028\\u2029]"
+      }
     },
     "Uuid": {
       "type": "string",
       "minLength": 1,
       "maxLength": 36,
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "not": {
+        "pattern": "[\\r\\n\\u2028\\u2029]"
+      }
     },
     "Version": {
       "type": "string",
       "minLength": 1,
       "maxLength": 32,
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "not": {
+        "pattern": "[\\r\\n\\u2028\\u2029]"
+      }
     },
     "Issuer": {
       "type": "string",
       "minLength": 1,
       "maxLength": 512,
-      "pattern": "^https://[^\\s/?#@]+(/[^\\s?#]*)?$"
+      "pattern": "^https://[A-Za-z0-9.:\\[\\]-]+(/[A-Za-z0-9._~!$&'()*+,;=:@%/\\[\\]-]*)?$",
+      "not": {
+        "pattern": "[\\r\\n\\u2028\\u2029]"
+      }
     },
     "TimeMs": {
       "type": "integer",
@@ -494,7 +506,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 71,
-      "pattern": "^sha256:[0-9a-f]{64}$"
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "not": {
+        "pattern": "[\\r\\n\\u2028\\u2029]"
+      }
     },
     "IdentityRef": {
       "type": "object",
@@ -706,6 +721,259 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-auth.identity.resolve"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-box.resources.list"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-vault.items.list"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-link.devices.list"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-link.tunnels.inspect"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-link.migrations.preflight"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-auth.profile.read"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-auth.profile.update"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "write"
+              },
+              "effect": {
+                "const": "application_write"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-auth.sessions.list"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-auth.sessions.revoke"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "write"
+              },
+              "effect": {
+                "const": "application_write"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-os.apps.list"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-plugin.plugins.list"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "read"
+              },
+              "effect": {
+                "const": "read_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "r-msg.harness.run"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "permission": {
+                "const": "execute"
+              },
+              "effect": {
+                "const": "external_effect"
+              },
+              "availability": {
+                "const": "disabled"
+              },
+              "approval": {
+                "const": "required"
+              }
+            }
+          }
         }
       ]
     },
@@ -901,7 +1169,10 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 253,
-          "pattern": "^[A-Za-z0-9.:-]+$"
+          "pattern": "^[A-Za-z0-9.:-]+$",
+          "not": {
+            "pattern": "[\\r\\n\\u2028\\u2029]"
+          }
         },
         "port": {
           "type": "integer",
@@ -999,7 +1270,10 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 100,
-          "pattern": "^urn:r-sdk:problem:[A-Z_]+$"
+          "pattern": "^urn:r-sdk:problem:[A-Z_]+$",
+          "not": {
+            "pattern": "[\\r\\n\\u2028\\u2029]"
+          }
         },
         "title": {
           "type": "string",
@@ -1888,13 +2162,19 @@
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 35,
-                      "pattern": "^[A-Za-z0-9-]+$"
+                      "pattern": "^[A-Za-z0-9-]+$",
+                      "not": {
+                        "pattern": "[\\r\\n\\u2028\\u2029]"
+                      }
                     },
                     "timeZone": {
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 64,
-                      "pattern": "^[A-Za-z][A-Za-z0-9_+./-]*$"
+                      "pattern": "^[A-Za-z][A-Za-z0-9_+./-]*$",
+                      "not": {
+                        "pattern": "[\\r\\n\\u2028\\u2029]"
+                      }
                     }
                   },
                   "required": [],

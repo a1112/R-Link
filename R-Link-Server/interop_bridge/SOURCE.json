@@ -1,20 +1,30 @@
 {
   "repository": "https://github.com/a1112/R-SDK",
-  "commit": "0e4f261038a80f5fd8d28f78a323b930e3a29c03",
+  "commit": "cc9fed2027c81a43e69b74d923b7fd13cbdf6d81",
   "candidate": true,
-  "schemaSha256": "b50726ee4f21e14ebe49477178b278491004225680f1c4c7636ea970525a9e7b",
+  "candidateNumber": 3,
+  "pythonPackageVersion": "1.0.0rc3",
+  "schemaSha256": "b3cb10497f9af87ff23b303098b540ab2ec9d21b4beb8b724458d5d7405e7000",
   "files": {
     "_vendor/r_sdk_interop/__init__.py": {
       "source": "packages/interop-python/src/r_sdk_interop/__init__.py",
-      "sha256": "6bd4237e8a55e8dc48bd21f06d5301bb32e5e0502e2bb0b21e8384b5d5ccfad2"
+      "gitBlob": "d01dc6bca6f73a7b3c2711a0243cea815752a5d8",
+      "sha256": "02d426df747f599b738607c97d85a8b5d21263d7cba70e87dbf26d334e2447ac"
     },
     "_vendor/r_sdk_interop/schema.json": {
       "source": "packages/interop-python/src/r_sdk_interop/schema.json",
-      "sha256": "b50726ee4f21e14ebe49477178b278491004225680f1c4c7636ea970525a9e7b"
+      "gitBlob": "9d7d3281bc2cd38a040080258c6b98f6a5ab15f5",
+      "sha256": "b3cb10497f9af87ff23b303098b540ab2ec9d21b4beb8b724458d5d7405e7000"
     },
     "UPSTREAM.md": {
       "source": "contracts/interop/v1.0.0/README.md",
-      "sha256": "dcc3257253dccac0f8100880657748f404d31489716e1033b0cd242acef71611"
+      "gitBlob": "9725a84b4d1e6591c172e21b04bad0fa439d2bd4",
+      "sha256": "90649c427341632d38a37dc56fa2da01c702b47556dbc6a03a3b3c5967c7ef00"
+    },
+    "MIGRATION.md": {
+      "source": "contracts/interop/CANDIDATE-3.md",
+      "gitBlob": "22858eb018b3d692747099019f77410ffdd5739a",
+      "sha256": "08a4a311bca320ad867b586bf1a56736d0b54ae986260807d89dd4bcd5b59a0d"
     }
   }
 }

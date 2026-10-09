@@ -2,7 +2,9 @@
 
 Canonical file: `schema.json`, Draft 2020-12, ID `urn:r-sdk:interop:1.0.0`.
 `build.py --check` verifies package-local copies and the common corpus. This
-candidate has not yet passed all helper/packaging/MSRV checks or parent review.
+candidate 3 has passed local source regressions; final review, minimum-version
+checks and native consumer integration remain separate. See `../CANDIDATE-3.md`
+for the precise source/package/schema migration.
 Do not treat schema acceptance as authentication, approval or authorization.
 
 Consumer entries:
@@ -18,6 +20,9 @@ generation and body. Responses echo the IDs and application-owned generation.
 Strict JSON parsing rejects duplicate decoded keys, unknown fields, oversized
 payloads, unsafe/noninteger numbers and unpaired Unicode surrogates. Limits:
 64 KiB, 32 nesting levels, 4096 nodes. Native parser output alone is insufficient.
+Raw decimal lexemes are checked before binary64 conversion; exactly integral
+`1.0`/`1e0` normalize to 1, while rounded fractional lexemes are rejected.
+Issuers are exact ASCII HTTPS URIs and patterned fields exclude line separators.
 
 The first slice provides negotiate.request/response, identity.mapping,
 capability.snapshot, approval.snapshot, service.descriptor, agent.request/result,
@@ -37,7 +42,9 @@ R-Auth session revocation affects only its own sessions, not global IdP/app logo
 
 R-msg Harness admission changes state and may call a model. It is advertised as
 r-msg.harness.run, execute/external_effect/disabled/approval-required, with
-NO_ADAPTER for runtime admission. There is no executable Harness request template.
+consumer-owned NO_ADAPTER for runtime admission. There is no executable Harness
+request template. The SDK fixes this classification but does not install admission
+handlers or claim that native consumer runtime checks have been executed here.
 The first msg bridge may call r-vault.items.list through its existing native
 gateway. Vault get/create/trash/restore retain their native read/write and per-call
 Strict semantics and have no new implicit public template.
@@ -60,6 +67,8 @@ use uniformly opaque DENIED for hidden/missing/locked/stale/revoked/password err
 
 Requests have timeoutMs=1..30000. TIMEOUT is uncertain delivery/completion,
 not confirmed cancellation; no client auto-retry exists. Read current state.
+Python caller deadlines do not await cancellation cleanup; late authorization
+cannot dispatch a handler, and a cancellation-resistant late result is discarded.
 Cancel has its own requestId, same target and original runId; the service freshly
 checks the original run owner. cancel_requested is admitted soft cancellation;
 only target-confirmed cancelled is final. After uncertain effects report

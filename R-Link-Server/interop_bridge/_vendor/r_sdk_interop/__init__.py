@@ -6,6 +6,7 @@ import copy
 import hashlib
 import json
 import math
+import re
 from importlib.resources import files
 from typing import Any, Awaitable, Callable
 
@@ -16,6 +17,7 @@ MAX_BYTES = 65536
 _SCHEMA = json.loads(files(__package__).joinpath("schema.json").read_text())
 Draft202012Validator.check_schema(_SCHEMA)
 _VALIDATOR = Draft202012Validator(_SCHEMA)
+_ERROR_CODES = frozenset(_SCHEMA["$defs"]["Problem"]["properties"]["code"]["enum"])
 _WRITES = {"r-auth.profile.update", "r-auth.sessions.revoke"}
 _APPS = {op: op.split(".")[0] for op in (
     "r-auth.identity.resolve", "r-auth.profile.read", "r-auth.profile.update", "r-auth.sessions.list",
@@ -46,8 +48,12 @@ def _admit(value: Any) -> None:
             _fail()
         if item is None or type(item) is bool:
             return
-        if type(item) in (int, float):
-            if not math.isfinite(item) or int(item) != item or abs(item) > 9007199254740991:
+        if type(item) is int:
+            if abs(item) > 9007199254740991:
+                _fail()
+            return
+        if type(item) is float:
+            if not math.isfinite(item) or not item.is_integer() or abs(item) > 9007199254740991:
                 _fail()
             return
         if type(item) is str:
@@ -143,6 +149,8 @@ def _semantic(value: Json) -> None:
             _fail("BINDING_MISMATCH")
         if problem:
             _problem(problem)
+        if output and (b["operation"] == "r-link.tunnels.inspect" and output["tunnelId"] != b["target"]["resourceId"] or b["operation"] == "r-auth.sessions.revoke" and output["sessionId"] != b["target"]["resourceId"] or b["operation"] == "r-link.migrations.preflight" and output["source"] != b["target"]):
+            _fail("BINDING_MISMATCH")
         if output and "sessions" in output:
             sessions = output["sessions"]
             if len({s["sessionId"] for s in sessions}) != len(sessions) or sum(s["current"] for s in sessions) > 1:
@@ -182,11 +190,41 @@ def parse(text: str) -> Json:
                 out[key] = value
             return out
 
-        return validate(json.loads(text, object_pairs_hook=pairs, parse_constant=lambda _: _fail()))
+        return validate(json.loads(text, object_pairs_hook=pairs, parse_int=_exact_integer,
+                                   parse_float=_exact_integer, parse_constant=lambda _: _fail()))
     except ContractError:
         raise
     except (ValueError, TypeError, RecursionError, UnicodeError):
         _fail()
+
+
+def _exact_integer(token: str) -> int:
+    """Validate exact decimal integer value before binary64 or large-int conversion."""
+    match = re.fullmatch(r"(-?)(0|[1-9][0-9]*)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?", token)
+    if match is None:
+        _fail()
+    fraction = match[3] or ""
+    digits = (match[2] + fraction).lstrip("0")
+    if not digits:
+        return 0
+    exponent_text = (match[4] or "0").lstrip("+-").lstrip("0")
+    if len(exponent_text) > 6:
+        _fail()
+    exponent = int(exponent_text or "0") * (-1 if (match[4] or "").startswith("-") else 1)
+    if abs(exponent) > MAX_BYTES + 16:
+        _fail()
+    scale = exponent - len(fraction)
+    if scale < 0:
+        if -scale >= len(digits) or not digits.endswith("0" * -scale):
+            _fail()
+        digits = digits[:scale]
+    else:
+        if len(digits) + scale > 16:
+            _fail()
+        digits += "0" * scale
+    if len(digits) > 16 or int(digits) > 9007199254740991:
+        _fail()
+    return int(match[1] + digits)
 
 
 def map_identity(mapping: Json, identity: Json, audience: Json) -> str:
@@ -203,10 +241,14 @@ def check_resource_binding(context: Json, policy: Json) -> Json:
     """Check verified bearer claims; signature/token-kind validation belongs to the resource server."""
     _admit(context)
     _admit(policy)
+    if type(context) is not dict or type(policy) is not dict:
+        _fail()
+    if set(policy) != {"issuer", "audience", "scope", "nowMs"} or any(type(policy[k]) is not str or not policy[k] for k in ("issuer", "audience", "scope")) or type(policy["nowMs"]) is not int or policy["nowMs"] < 0:
+        _fail()
     if set(context) != {"identity", "audiences", "scopes", "expiresAtMs"}:
         _fail()
     _def("IdentityRef", context["identity"])
-    if type(context["audiences"]) is not list or type(context["scopes"]) is not list or len(context["audiences"]) > 32 or len(context["scopes"]) > 64 or not all(type(v) is str for v in context["audiences"] + context["scopes"]) or type(context["expiresAtMs"]) is not int or type(policy.get("nowMs")) is not int:
+    if type(context["audiences"]) is not list or type(context["scopes"]) is not list or len(context["audiences"]) > 32 or len(context["scopes"]) > 64 or not all(type(v) is str for v in context["audiences"] + context["scopes"]) or type(context["expiresAtMs"]) is not int or context["expiresAtMs"] < 0:
         _fail()
     if context["identity"]["issuer"] != policy.get("issuer") or policy.get("audience") not in context["audiences"] or policy.get("scope") not in context["scopes"]:
         _fail("FORBIDDEN")
@@ -274,6 +316,13 @@ def check_response(request: Json, response: Json) -> Json:
         _fail("BINDING_MISMATCH")
     if request["kind"] == "agent.cancel" and a["runId"] != b["runId"]:
         _fail("BINDING_MISMATCH")
+    output = b.get("output")
+    if output and a.get("operation") == "r-link.tunnels.inspect" and output["tunnelId"] != a["arguments"]["tunnelId"]:
+        _fail("BINDING_MISMATCH")
+    if output and a.get("operation") == "r-auth.sessions.revoke" and output["sessionId"] != a["arguments"]["sessionId"]:
+        _fail("BINDING_MISMATCH")
+    if output and a.get("operation") == "r-link.migrations.preflight" and any(output[k] != a["arguments"][k] for k in ("source", "destination")):
+        _fail("BINDING_MISMATCH")
     if request["kind"] == "negotiate.request":
         if b["selectedVersion"] not in a["versions"]:
             _fail("UNSUPPORTED_VERSION")
@@ -305,20 +354,30 @@ class Client:
         self.exchange = exchange
         self.allow_application_writes = allow_application_writes
         self.negotiated: Json | None = None
+        self._negotiation_epoch = 0
 
     async def _exchange(self, request: Json) -> Json:
         try:
-            text = await asyncio.wait_for(self.exchange(json.dumps(request, ensure_ascii=False)), request["body"].get("timeoutMs", 5000) / 1000)
+            text = await _bounded(self.exchange(json.dumps(request, ensure_ascii=False)), request["body"].get("timeoutMs", 5000) / 1000)
             return check_response(request, parse(text))
         except TimeoutError:
             _fail("TIMEOUT")
+        except ContractError as error:
+            raise ContractError(error.code if error.code in _ERROR_CODES else "INTERNAL") from None
+        except Exception:
+            raise ContractError("INTERNAL") from None
 
     async def negotiate(self, request: Json) -> Json:
+        self._negotiation_epoch += 1
+        epoch = self._negotiation_epoch
         self.negotiated = None
         validate(request)
+        request = copy.deepcopy(request)
         if request["kind"] != "negotiate.request":
             _fail()
         response = await self._exchange(request)
+        if epoch != self._negotiation_epoch:
+            _fail("STALE_GENERATION")
         if response["kind"] == "error":
             _fail(response["body"]["code"])
         self.negotiated = {**copy.deepcopy(response["body"]), "generation": response["generation"]}
@@ -326,6 +385,8 @@ class Client:
 
     async def call(self, request: Json) -> Json:
         validate(request)
+        request = copy.deepcopy(request)
+        epoch = self._negotiation_epoch
         if self.negotiated is None:
             _fail("UNSUPPORTED_VERSION")
         if request["generation"] != self.negotiated["generation"]:
@@ -338,31 +399,82 @@ class Client:
                 _fail("EXECUTION_DISABLED")
             if not any(c["id"] == op and c["version"] == VERSION and c["permission"] == ("write" if op in _WRITES else "read") and c["availability"] == "enabled" for c in self.negotiated["capabilities"]):
                 _fail("CAPABILITY_UNAVAILABLE")
-        return await self._exchange(request)
+        response = await self._exchange(request)
+        if epoch != self._negotiation_epoch:
+            _fail("STALE_GENERATION")
+        return response
 
 
 async def guard_read(request: Json, *, authorize: Callable[[Json], Awaitable[bool]],
                      handler: Callable[[Json], Awaitable[Json]], generation: Callable[[], int]) -> Json:
     """Recheck app-owned authority before and after an awaited, explicitly allowlisted read."""
     validate(request)
+    request = copy.deepcopy(request)
     if request["kind"] not in ("agent.request", "app.request") or request["body"]["mode"] != "read_only":
         _fail("EXECUTION_DISABLED")
     if not all(callable(c) for c in (authorize, handler, generation)):
         _fail()
+    deadline = asyncio.get_running_loop().time() + request["body"]["timeoutMs"] / 1000
+
+    def check_deadline() -> None:
+        if asyncio.get_running_loop().time() >= deadline:
+            _fail("TIMEOUT")
 
     async def check() -> None:
-        if request["generation"] != generation():
+        check_deadline()
+        current = generation()
+        if type(current) is not int or request["generation"] != current:
             _fail("STALE_GENERATION")
-        if await authorize(request) is not True:
+        if await authorize(copy.deepcopy(request)) is not True:
             _fail("FORBIDDEN")
+        check_deadline()
+        current = generation()
+        if type(current) is not int or request["generation"] != current:
+            _fail("STALE_GENERATION")
 
     async def dispatch() -> Json:
         await check()
-        response = await handler(request)
+        response = copy.deepcopy(validate(await handler(copy.deepcopy(request))))
         await check()
         return check_response(request, response)
 
     try:
-        return await asyncio.wait_for(dispatch(), request["body"]["timeoutMs"] / 1000)
+        return await _bounded(dispatch(), request["body"]["timeoutMs"] / 1000)
     except TimeoutError:
         _fail("TIMEOUT")
+    except ContractError as error:
+        raise ContractError(error.code if error.code in _ERROR_CODES else "INTERNAL") from None
+    except Exception:
+        raise ContractError("INTERNAL") from None
+
+
+_BACKGROUND_TASKS: set[asyncio.Task] = set()
+
+
+def _cancel_and_drain(task: asyncio.Task) -> None:
+    # Retain/observe cooperative cleanup without awaiting it at the caller deadline.
+    # Cancel requests never imply that native/remote effects were rolled back.
+    task.cancel()
+    _BACKGROUND_TASKS.add(task)
+
+    def done(completed: asyncio.Task) -> None:
+        _BACKGROUND_TASKS.discard(completed)
+        if not completed.cancelled():
+            completed.exception()
+
+    task.add_done_callback(done)
+
+
+async def _bounded(awaitable: Awaitable[Any], timeout: float) -> Any:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    task = asyncio.ensure_future(awaitable)
+    try:
+        done, _ = await asyncio.wait({task}, timeout=timeout)
+    except asyncio.CancelledError:
+        _cancel_and_drain(task)
+        raise
+    if not done or loop.time() >= deadline:
+        _cancel_and_drain(task)
+        _fail("TIMEOUT")
+    return task.result()

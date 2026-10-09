@@ -1,15 +1,15 @@
 # Opt-in R-SDK read boundary candidate
 
 This local stage consumes only R-SDK commit
-`0e4f261038a80f5fd8d28f78a323b930e3a29c03`. Its independent review found
-blocking parser, client-generation, mutable-request, output-binding and deadline
-defects. Do not release or enable it as a production read integration. The SDK
-owner must supply a repaired SHA; replace the unchanged snapshot and repeat
-product verification before release.
+`cc9fed2027c81a43e69b74d923b7fd13cbdf6d81`. Candidate 3 replaces the rejected first draft and reports repairs to the reviewed
+parser, client-generation, mutable-request, output-binding and deadline defects.
+Fresh independent review remains pending. Do not release or enable it as a
+production read integration. The unchanged migration note is included as
+`interop_bridge/MIGRATION.md`; all wire fields/operations remain unchanged.
 
 `R-Link-Server/interop_bridge/SOURCE.json` records every upstream file hash.
 Schema SHA-256 is
-`b50726ee4f21e14ebe49477178b278491004225680f1c4c7636ea970525a9e7b`.
+`b3cb10497f9af87ff23b303098b540ab2ec9d21b4beb8b724458d5d7405e7000`.
 R-SDK owns all wire fields and operation templates. This repository owns native
 authentication, configured instance identity, inventory/trust and read lifecycle.
 
@@ -63,8 +63,8 @@ retain one of eight slots. Cancellation is soft admission until actual native
 termination, independently of SDK wrapper completion. A private bounded journal
 deduplicates within the authenticated actor/instance/request namespace; cached
 responses require fresh native authorization. No journal entry is dispatched for
-the blocked device operation. The candidate SDK's remaining defects remain
-release blockers, regardless of these application guards.
+the blocked device operation. Independent SDK review remains a release prerequisite, regardless of these
+application guards.
 
 ## Local verification
 

@@ -236,7 +236,7 @@ def test_exact_vendored_candidate_has_recorded_schema_and_source_hashes() -> Non
 
     root = Path(interop_bridge.__file__).parent
     manifest = json.loads((root / "SOURCE.json").read_text())
-    assert manifest["commit"] == "0e4f261038a80f5fd8d28f78a323b930e3a29c03"
+    assert manifest["commit"] == "cc9fed2027c81a43e69b74d923b7fd13cbdf6d81"
     for path, metadata in manifest["files"].items():
         assert (
             hashlib.sha256((root / path).read_bytes()).hexdigest() == metadata["sha256"]
