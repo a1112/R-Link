@@ -70,6 +70,12 @@ deduplicates within the authenticated actor/instance/request namespace; cached
 responses require fresh native authorization. No journal entry is dispatched for
 the blocked device operation. Independent SDK review remains a release prerequisite, regardless of these
 application guards.
+Bounded asynchronous lookup is followed by a required synchronous native commit
+callback that reads current credentials, role and session state. The native
+owner rechecks at handler dispatch and after response validation, with no yield
+between the final recheck and commit. The same absolute deadline is checked after
+that recheck. Local descriptors also recheck after rendering their response;
+an earlier lookup boolean cannot release a descriptor after session revocation.
 
 ## Local verification
 
@@ -81,6 +87,11 @@ exact vendor hashes. Native multiuser/local-auth regression tests also run.
 The common lifecycle counterexamples run through actual R-OS/R-Plugin registry
 handlers in the separate R checkout. R-Link device-list interoperability is
 explicitly unverified and blocked.
+The real-session descriptor counterexample queues revocation after native lookup
+returns and before its waiter resumes; the response is now UNAUTHENTICATED/401.
+R-Link's three lightweight suites pass 79 tests. The corresponding common-bridge
+and Agent counterexamples run over real R-OS/R-Plugin handlers and SQLite owners,
+bringing the combined product suites to 140 tests.
 
 No test contacts a device, IdP, SSH host, model or network control plane; no
 production listener is started.

@@ -146,6 +146,14 @@ async def authenticate(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Security(security),
 ) -> Dict[str, Any]:
+    """Resolve the current native identity while retaining FastAPI dependency injection."""
+    return authenticate_current(request, credentials)
+
+
+def authenticate_current(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = None,
+) -> Dict[str, Any]:
     """OIDC never falls back to local access; cookies cannot inherit a service key."""
     if identity.enabled():
         cookie = request.cookies.get(identity.SESSION_COOKIE)

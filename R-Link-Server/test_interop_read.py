@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import sys
@@ -11,7 +12,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
@@ -21,6 +22,8 @@ from api import interop as bridge_api
 from core import devices, identity
 from interop_bridge import Client, ContractError, validate
 from interop_bridge._vendor.r_sdk_interop import check_response
+from interop_bridge.binding import ReadView
+from interop_bridge.service import Authorize
 
 PREFIX = "R_LINK_INTEROP"
 APP = "r-link"
@@ -245,3 +248,33 @@ def test_exact_vendored_candidate_has_recorded_schema_and_source_hashes() -> Non
         manifest["schemaSha256"]
         == manifest["files"]["_vendor/r_sdk_interop/schema.json"]["sha256"]
     )
+
+
+@pytest.mark.asyncio
+async def test_queued_native_session_revocation_blocks_descriptor(
+    world: SimpleNamespace,
+) -> None:
+    context = bridge_api.native_context
+    scheduled = False
+
+    async def wrapped_context(request: Request) -> tuple[str, Authorize]:
+        owner, native_authorize = await context(request)
+
+        async def authorize(view: ReadView) -> bool:
+            nonlocal scheduled
+            allowed = await native_authorize(view)
+            if not scheduled:
+                scheduled = True
+                asyncio.get_running_loop().call_soon(world.revoke)
+            return allowed
+
+        return owner, authorize
+
+    world.monkeypatch.setattr(bridge_api, "native_context", wrapped_context)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=world.app), base_url="http://localhost"
+    ) as http:
+        response = await http.get("/api/interop/v1/descriptor", headers=world.headers)
+        again = await http.get("/api/interop/v1/descriptor", headers=world.headers)
+    assert scheduled and response.status_code == again.status_code == 401
+    assert response.json() == {"detail": "UNAUTHENTICATED"}

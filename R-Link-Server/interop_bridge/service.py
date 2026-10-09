@@ -32,6 +32,7 @@ from .binding import ReadView, check_seal, read_view, seal
 
 Json = dict[str, Any]
 Authorize = Callable[[ReadView], Awaitable[bool]]
+Recheck = Callable[[ReadView], bool]
 Handler = Callable[[ReadView], Awaitable[Json]]
 logger = logging.getLogger(__name__)
 
@@ -235,7 +236,12 @@ class ReadService:
             raise ContractError("TIMEOUT")
 
     async def check(
-        self, request: Json, authorize: Authorize, deadline: float | None = None
+        self,
+        request: Json,
+        authorize: Authorize,
+        deadline: float | None = None,
+        *,
+        recheck: Recheck,
     ) -> None:
         """Bind native authority to an immutable frame before and after awaiting it."""
         expected = seal(request)
@@ -261,6 +267,7 @@ class ReadService:
             if not done:
                 task.cancel()
                 raise ContractError("TIMEOUT")
+            self.check_local(request, end)
             allowed = task.result()
         except asyncio.CancelledError:
             task.cancel()
@@ -268,9 +275,27 @@ class ReadService:
         except TypeError:
             raise ContractError("BINDING_MISMATCH") from None
         check_seal(request, expected)
+        if allowed is not True:
+            raise ContractError("FORBIDDEN")
+        self.commit(request, recheck, end)
+
+    def commit(self, request: Json, recheck: Recheck, deadline: float | None = None) -> None:
+        """Linearize native authority without yielding, then check the same deadline."""
+        expected = seal(request)
+        self.check_local(request, deadline)
+        allowed = recheck(read_view(request))
+        check_seal(request, expected)
         self.check_local(request, deadline)
         if allowed is not True:
             raise ContractError("FORBIDDEN")
+
+    def deliver(
+        self, request: Json, response: Json, recheck: Recheck, deadline: float
+    ) -> Json:
+        """Validate first and commit current native authority at final result release."""
+        response = check_response(request, response)
+        self.commit(request, recheck, deadline)
+        return response
 
     def authorization_stopped(self, task: asyncio.Task[bool]) -> None:
         """Retain a slot until cancelled authority lookup actually finishes."""
@@ -317,6 +342,7 @@ class ReadService:
         run_id: str,
         authorize: Authorize,
         deadline: float,
+        recheck: Recheck,
     ) -> Json:
         """Discard results after revocation or epoch rotation; retain final read outcome."""
 
@@ -328,6 +354,7 @@ class ReadService:
             self.check_local(frame, deadline)
             if closed or run_id in self.cancel_requested:
                 raise asyncio.CancelledError
+            self.commit(frame, recheck, deadline)
             stopped = asyncio.Event()
             self.native_pending[run_id] = stopped
             try:
@@ -336,7 +363,9 @@ class ReadService:
                 self.check_local(frame, deadline)
                 if closed or run_id in self.cancel_requested:
                     raise asyncio.CancelledError
-                return self.result(frame, run_id, "completed", output)
+                response = self.result(frame, run_id, "completed", output)
+                self.commit(frame, recheck, deadline)
+                return response
             finally:
                 stopped.set()
                 self.native_pending.pop(run_id, None)
@@ -344,7 +373,7 @@ class ReadService:
 
         async def authorized(frame: Json) -> bool:
             check_seal(frame, expected)
-            await self.check(frame, authorize, deadline)
+            await self.check(frame, authorize, deadline, recheck=recheck)
             return True
 
         try:
@@ -370,7 +399,7 @@ class ReadService:
                 raise ContractError("TIMEOUT")
             response = worker.result()
             check_seal(request, expected)
-            self.check_local(request, deadline)
+            self.commit(request, recheck, deadline)
             if run_id in self.cancel_requested:
                 response = self.result(request, run_id, "cancelled")
         except asyncio.CancelledError:
@@ -426,15 +455,17 @@ class ReadService:
         actor_id: str,
         authorize: Authorize,
         *,
+        recheck: Recheck,
         respond_async: bool = False,
     ) -> Json:
         """Parse exact SDK JSON, check authority, negotiate, dispatch, replay or soft-cancel."""
+        started = asyncio.get_running_loop().time()
         try:
             request = parse(text)
         except OverflowError:
             raise ContractError("SCHEMA_INVALID") from None
         deadline = (
-            asyncio.get_running_loop().time()
+            started
             + request["body"].get("timeoutMs", 5000) / 1000
         )
         namespace = json.dumps(
@@ -445,7 +476,7 @@ class ReadService:
         actor = hashlib.sha256(namespace.encode()).hexdigest()
         response: Json | None = None
         try:
-            await self.check(request, authorize, deadline)
+            await self.check(request, authorize, deadline, recheck=recheck)
             kind, body = request["kind"], request["body"]
             if kind == "negotiate.request":
                 response = self.settings.envelope(
@@ -457,8 +488,8 @@ class ReadService:
                     },
                     request,
                 )
-                await self.check(request, authorize, deadline)
-                return check_response(request, response)
+                await self.check(request, authorize, deadline, recheck=recheck)
+                return self.deliver(request, response, recheck, deadline)
             if kind not in {"agent.request", "agent.cancel"}:
                 raise ContractError("EXECUTION_DISABLED")
             if body["target"] != self.settings.target():
@@ -496,13 +527,16 @@ class ReadService:
                     if task is None:
                         raise ContractError("OUTCOME_UNKNOWN")
                     if respond_async:
-                        await self.check(request, authorize, deadline)
-                        return self.result(request, previous["run_id"], "running")
+                        await self.check(request, authorize, deadline, recheck=recheck)
+                        return self.deliver(
+                            request, self.result(request, previous["run_id"], "running"),
+                            recheck, deadline,
+                        )
                     response = await asyncio.shield(task)
-                await self.check(request, authorize, deadline)
-                return check_response(request, response)
+                await self.check(request, authorize, deadline, recheck=recheck)
+                return self.deliver(request, response, recheck, deadline)
             if kind == "agent.cancel":
-                return await self.cancel(actor, request, authorize, deadline)
+                return await self.cancel(actor, request, authorize, deadline, recheck)
             if (
                 len(
                     self.active.keys()
@@ -515,16 +549,18 @@ class ReadService:
             run_id = str(uuid4())
             self.reserve(actor, request, run_id)
             task = asyncio.create_task(
-                self.run(actor, request, run_id, authorize, deadline)
+                self.run(actor, request, run_id, authorize, deadline, recheck)
             )
             self.active[run_id] = task
             if respond_async:
                 await asyncio.sleep(0)
-                await self.check(request, authorize, deadline)
-                return self.result(request, run_id, "accepted")
+                await self.check(request, authorize, deadline, recheck=recheck)
+                return self.deliver(
+                    request, self.result(request, run_id, "accepted"), recheck, deadline
+                )
             response = await asyncio.shield(task)
-            await self.check(request, authorize, deadline)
-            return check_response(request, response)
+            await self.check(request, authorize, deadline, recheck=recheck)
+            return self.deliver(request, response, recheck, deadline)
         except ContractError as error:
             return self.error(request, error.code)
         except sqlite3.Error:
@@ -548,7 +584,8 @@ class ReadService:
             )
 
     async def cancel(
-        self, actor: str, request: Json, authorize: Authorize, deadline: float
+        self, actor: str, request: Json, authorize: Authorize, deadline: float,
+        recheck: Recheck,
     ) -> Json:
         """Freshly check the original owner and admit soft cancellation of a read."""
         run_id = request["body"]["runId"]
@@ -566,7 +603,7 @@ class ReadService:
         )
         if original is None:
             raise ContractError("DENIED")
-        await self.check(original, authorize, deadline)
+        await self.check(original, authorize, deadline, recheck=recheck)
         task = self.active.get(run_id)
         if task is None:
             raise ContractError("CANCEL_NOT_CONFIRMED")
@@ -574,11 +611,12 @@ class ReadService:
         if worker is not None and worker.done():
             raise ContractError("CANCEL_NOT_CONFIRMED")
         self.reserve(actor, request, run_id)
+        self.commit(request, recheck, deadline)
         self.cancel_requested.add(run_id)
         if worker is not None:
             worker.cancel()
         response = self.result(original, run_id, "cancel_requested")
         response.update({key: request[key] for key in ("requestId", "correlationId")})
-        await self.check(request, authorize, deadline)
+        await self.check(request, authorize, deadline, recheck=recheck)
         self.save(actor, request, response)
-        return check_response(request, response)
+        return self.deliver(request, response, recheck, deadline)
