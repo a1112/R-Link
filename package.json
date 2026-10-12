@@ -11,6 +11,9 @@
     "test:server": "python -m pytest R-Link-Server -q",
     "verify:migration": "python scripts/verify_web_migration.py",
     "tauri:dev": "npm run tauri:dev --prefix apps/r-link-web",
-    "tauri:build": "npm run tauri:build --prefix apps/r-link-web"
+    "tauri:build": "npm run tauri:build --prefix apps/r-link-web",
+    "version:show": "python3 scripts/version_manager.py show",
+    "version:check": "python3 scripts/version_manager.py check",
+    "version:plan": "python3 scripts/version_manager.py bump patch"
   }
 }

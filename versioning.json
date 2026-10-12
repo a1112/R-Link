@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "notes": [
+    "Adoption preserves all existing canonical versions; no release, bump, commit or tag is performed by this tool.",
+    "Central artifact versions are historical observations, not authoritative replacements for source manifest versions.",
+    "Versions on explicitly separate units are independent even when currently numerically equal."
+  ],
+  "units": {
+    "apps-r-link-web": {
+      "canonical": {
+        "path": "apps/r-link-web/package.json",
+        "adapter": "json",
+        "pointer": "/version",
+        "format": "semver"
+      },
+      "mirrors": [
+        {
+          "path": "apps/r-link-web/src-tauri/Cargo.toml",
+          "adapter": "toml",
+          "table": [
+            "package"
+          ],
+          "key": "version",
+          "format": "semver"
+        },
+        {
+          "path": "apps/r-link-web/src-tauri/tauri.conf.json",
+          "adapter": "json",
+          "pointer": "/version",
+          "format": "semver"
+        },
+        {
+          "path": "apps/r-link-web/package-lock.json",
+          "adapter": "json",
+          "pointer": "/version",
+          "format": "semver"
+        },
+        {
+          "path": "apps/r-link-web/package-lock.json",
+          "adapter": "json",
+          "pointer": "/packages//version",
+          "format": "semver"
+        },
+        {
+          "path": "apps/r-link-web/src-tauri/Cargo.lock",
+          "adapter": "cargo-lock",
+          "package": "rlink-tauri",
+          "format": "semver"
+        }
+      ],
+      "notes": "Separately selectable first-party version authority; preserve its existing canonical version. This does not assert an independently published release."
+    },
+    "app": {
+      "canonical": {
+        "path": "package.json",
+        "adapter": "json",
+        "pointer": "/version",
+        "format": "semver"
+      },
+      "mirrors": [
+        {
+          "path": "package-lock.json",
+          "adapter": "json",
+          "pointer": "/version",
+          "format": "semver"
+        },
+        {
+          "path": "package-lock.json",
+          "adapter": "json",
+          "pointer": "/packages//version",
+          "format": "semver"
+        }
+      ],
+      "notes": "Separately selectable first-party version authority; preserve its existing canonical version. This does not assert an independently published release."
+    }
+  },
+  "unmanaged": []
+}
