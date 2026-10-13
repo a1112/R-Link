@@ -13,13 +13,17 @@
     "windows": [
       {
         "title": "R-Link",
-        "width": 1280,
-        "height": 800,
+        "width": 1060,
+        "height": 700,
         "decorations": false,
         "center": true,
         "resizable": true,
         "fullscreen": false,
-        "transparent": false
+        "transparent": false,
+        "minWidth": 800,
+        "minHeight": 540,
+        "maximized": false,
+        "visible": false
       }
     ]
   },
