@@ -11,3 +11,5 @@ Source: `apps/r-link-web/src-tauri/src/window_geometry.rs` and `window_placement
 Verification: the six geometry tests cover small/Retina screens, a valid larger saved window, negative monitor coordinates and display removal, edge/work-area-sized saved geometry, invalid saved values, and smaller saved geometry on a larger display. The helper is also compiled against Tauri's real API. Full application Cargo checks are recorded in the task report. Actual native window interaction and Windows/Linux appearance have not been visually verified in this task.
 
 The previous unconditional primary-screen 70% resize and recenter on every launch is removed.
+
+Mobile builds retain the original visible window configuration through Android/iOS platform overrides. Desktop geometry modules and setup are excluded on mobile. Mobile devices were not tested.

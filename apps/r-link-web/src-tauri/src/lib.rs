@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(not(mobile))]
 mod window_geometry;
+#[cfg(not(mobile))]
 mod window_placement;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
