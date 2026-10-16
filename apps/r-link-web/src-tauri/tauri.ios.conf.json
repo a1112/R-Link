@@ -1,0 +1,17 @@
+{
+  "app": {
+    "windows": [
+      {
+        "title": "R-Link",
+        "width": 1280,
+        "height": 800,
+        "decorations": false,
+        "center": true,
+        "resizable": true,
+        "fullscreen": false,
+        "transparent": false,
+        "visible": true
+      }
+    ]
+  }
+}
