@@ -1,6 +1,8 @@
 services:
   server:
-    build: ../R-Link-Server
+    build:
+      context: ..
+      dockerfile: R-Link-Server/Dockerfile
     init: true
     restart: unless-stopped
     environment:
@@ -26,6 +28,9 @@ services:
       R_LINK_BOOTSTRAP_ADMIN_SUBJECT: ${R_LINK_BOOTSTRAP_ADMIN_SUBJECT:-}
       R_LINK_SESSION_SECONDS: ${R_LINK_SESSION_SECONDS:-28800}
       R_LINK_AUTH_FLOW_SECRET: ${R_LINK_AUTH_FLOW_SECRET:-}
+      R_LINK_BRIDGEPROXY_URL: ${R_LINK_BRIDGEPROXY_URL:-}
+      R_LINK_BRIDGEPROXY_READ_TOKEN: ${R_LINK_BRIDGEPROXY_READ_TOKEN:-}
+      R_LINK_BRIDGEPROXY_CONTROL_TOKEN: ${R_LINK_BRIDGEPROXY_CONTROL_TOKEN:-}
     volumes:
       - rlink-data:/data
       - rlink-config:/app/config

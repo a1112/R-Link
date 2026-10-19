@@ -13,6 +13,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 BUILDER = ROOT / 'scripts/build_nas_package.py'
 REQUIRED = ['R-Link-Server/main.py', 'R-Link-Server/requirements.txt',
+            'contracts/bridgeproxy-v1.json',
             'deploy/nas/requirements.lock', 'deploy/nas/compose.yaml',
             'deploy/nas/Dockerfile.server', 'deploy/nas/Dockerfile.web',
             'deploy/nas/nginx.conf', 'deploy/nas/.env.example',
@@ -92,6 +93,22 @@ def test_missing_dependency_lock_fails_without_partial_archive(repository, tmp_p
     with pytest.raises(ValueError, match='package-lock'):
         module().build_package(repository, 'HEAD', tmp_path / 'output', 'test-1')
     assert not list((tmp_path / 'output').glob('*.tar.gz'))
+
+
+def test_missing_core_contract_fails_without_partial_archive(repository, tmp_path):
+    git(repository, 'rm', 'contracts/bridgeproxy-v1.json')
+    git(repository, 'commit', '-qm', 'missing core contract')
+    with pytest.raises(ValueError, match='bridgeproxy-v1.json'):
+        module().build_package(repository, 'HEAD', tmp_path / 'output', 'test-1')
+    assert not list((tmp_path / 'output').glob('*.tar.gz'))
+
+
+def test_contract_whitelist_does_not_admit_other_contract_directory_files():
+    builder = module()
+    assert builder.allowed('contracts/bridgeproxy-v1.json')
+    for name in ('contracts/credentials.json', 'contracts/private.key',
+                 'contracts/runtime/config.json', 'contracts/bridgeproxy-v1.json.bak'):
+        assert not builder.allowed(name)
 
 
 def image_archive(path, *, architecture='amd64', token=False, revision=None):
@@ -231,6 +248,17 @@ def test_package_dockerfiles_do_not_bake_tokens_proxies_or_runtime_data():
         assert 'R_LINK_API_TOKEN' not in text
         assert not any('PROXY' in line for line in text.splitlines() if line.startswith('ENV'))
     assert 'USER 10001' in (ROOT / 'deploy/nas/Dockerfile.server').read_text()
+
+
+def test_server_images_include_shared_contract_from_repository_root_context():
+    for dockerfile in ('R-Link-Server/Dockerfile', 'deploy/nas/Dockerfile.server'):
+        assert 'COPY contracts/bridgeproxy-v1.json /contracts/bridgeproxy-v1.json' in (ROOT / dockerfile).read_text()
+    for compose, expected_context in (('deploy/compose.yaml', '..'), ('deploy/nas/compose.yaml', '../..')):
+        config = yaml.safe_load((ROOT / compose).read_text())
+        build = config['services']['server']['build']
+        assert build['context'] == expected_context
+        assert ((ROOT / compose).parent / build['context']).resolve() == ROOT
+    assert 'COPY R-Link-Server/requirements.txt .' in (ROOT / 'R-Link-Server/Dockerfile').read_text()
 
 
 def test_install_docs_explain_credentials_retention_and_spk_limitations():

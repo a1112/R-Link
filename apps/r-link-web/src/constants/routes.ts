@@ -23,6 +23,7 @@ export type RouteId =
   | 'network'
   | 'mesh'
   | 'fabric'
+  | 'bridgeproxy'
   | 'remote'
   | 'frp'
   | 'domains'
@@ -74,6 +75,10 @@ export const routes: RouteConfig[] = [
   {
     id: 'fabric', label: '自研组网', icon: Network, title: 'R-Link 自研组网',
     description: '自研控制面、直连探测和中转路径',
+  },
+  {
+    id: 'bridgeproxy', label: '网络出口与代理', icon: Globe, title: '网络出口与代理',
+    description: 'BridgeProxy Core 出口共享、反向隧道与流量接管',
   },
   {
     id: 'remote',
@@ -143,7 +148,7 @@ export const routes: RouteConfig[] = [
 
 export const routesByGroupId: Record<string, RouteId[]> = {
   overview: ['network', 'remote'],
-  network: ['fabric', 'mesh', 'ssh', 'console', 'frp', 'domains', 'dashboard', 'analytics'],
+  network: ['fabric', 'mesh', 'bridgeproxy', 'ssh', 'console', 'frp', 'domains', 'dashboard', 'analytics'],
   storage: ['storage', 'rfile'],
   extensions: ['plugins', 'downloads'],
 };

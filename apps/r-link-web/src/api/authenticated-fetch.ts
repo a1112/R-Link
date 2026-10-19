@@ -3,7 +3,7 @@ import { expireAccount, requestAccountAccess, serviceBase, trackAccountRequest }
 export { apiOrigin } from './service-access';
 
 /** OIDC uses its own session; legacy local/service access remains available. */
-export async function authenticatedFetch(input: string | URL, init: RequestInit = {}): Promise<Response> {
+export async function authenticatedFetch(input: string | URL, init: RequestInit = {}, options: { coreErrors?: boolean } = {}): Promise<Response> {
   const url = new URL(input, window.location.href);
   if (url.origin !== apiOrigin()) throw new Error('拒绝向未配置的服务发送访问密钥');
   const headers = new Headers(init.headers);
@@ -34,8 +34,12 @@ export async function authenticatedFetch(input: string | URL, init: RequestInit 
     const response = await fetch(url.toString(), { ...init, headers, signal: request.signal, credentials, redirect: 'error' });
     if (!request.isCurrent()) throw new DOMException('账户或服务已切换', 'AbortError');
     if (!response.ok) {
-      const payload = await response.json().catch(() => null);
+      const payload = await response.clone().json().catch(() => null);
       if (!request.isCurrent()) throw new DOMException('账户或服务已切换', 'AbortError');
+      // A Core's 401/409 concerns its own credential/revision, not the R-Link
+      // account. Only the configured Core facade may preserve this envelope.
+      if (options.coreErrors && url.pathname.startsWith(`${base.pathname}api/bridgeproxy/v1/`)
+          && payload?.api_version === 'v1' && typeof payload?.error?.code === 'string') return response;
       if (access.mode === 'oidc' && [401, 409].includes(response.status)) expireAccount();
       if (access.mode === 'oidc' && response.status === 403) window.dispatchEvent(new Event('r-link-account-refresh'));
       throw new Error(typeof payload?.detail === 'string' ? payload.detail : `HTTP ${response.status}`);

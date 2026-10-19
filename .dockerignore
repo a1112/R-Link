@@ -1,5 +1,13 @@
 .git
 .venv
+.repository-consolidation-local
+.pytest_cache
+.claude
+.codex
+logs
+**/__pycache__
+**/*.pyc
+**/*.sqlite3*
 **/node_modules
 **/target
 **/dist
@@ -9,5 +17,8 @@ R-Link-Server/data
 R-Link-Server/shared
 R-Link-Server/config
 R-Link-Server/logs
+R-Link-Server/plugins
+R-Link-Server/**/*.exe
+**/.env
 deploy/.env
 **/.env.local

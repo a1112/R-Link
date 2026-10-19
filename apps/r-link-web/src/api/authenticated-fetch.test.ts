@@ -110,3 +110,25 @@ describe('OIDC request boundaries', () => {
     expect(new Headers(vi.mocked(fetch).mock.calls[0][1]?.headers).has('Authorization')).toBe(false);
   });
 });
+
+describe('Core facade errors retain their own authority namespace', () => {
+  beforeEach(() => { config.baseURL = window.location.origin; resetAccount(); session(); vi.stubGlobal('fetch', vi.fn()); });
+  afterEach(() => { resetAccount(); vi.unstubAllGlobals(); });
+  it.each([401, 403, 409, 412])('preserves a Core HTTP %s response and the active R-Link session', async status => {
+    const body = { api_version: 'v1', error: { code: 'core_boundary', message: 'Core rejected the request' } };
+    vi.mocked(fetch).mockResolvedValue(Response.json(body, { status }));
+    const response = await authenticatedFetch(`${config.baseURL}/api/bridgeproxy/v1/status`, {}, { coreErrors: true });
+    expect(response.status).toBe(status); expect(await response.json()).toEqual(body);
+    expect(getAccountState().session?.authenticated).toBe(true);
+  });
+  it('still expires the R-Link account when the facade itself rejects its session', async () => {
+    vi.mocked(fetch).mockResolvedValue(Response.json({ detail: 'Session revoked' }, { status: 401 }));
+    await expect(authenticatedFetch(`${config.baseURL}/api/bridgeproxy/v1/status`, {}, { coreErrors: true })).rejects.toThrow('Session revoked');
+    expect(getAccountState().session?.authenticated).toBe(false);
+  });
+  it('does not enable Core error handling outside the fixed facade path', async () => {
+    vi.mocked(fetch).mockResolvedValue(Response.json({ api_version: 'v1', error: { code: 'untrusted' } }, { status: 401 }));
+    await expect(authenticatedFetch(`${config.baseURL}/api/devices`, {}, { coreErrors: true })).rejects.toThrow('HTTP 401');
+    expect(getAccountState().session?.authenticated).toBe(false);
+  });
+});

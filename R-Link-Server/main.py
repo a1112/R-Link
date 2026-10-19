@@ -32,6 +32,8 @@ from api.storage import router as storage_router
 from api.services import router as services_router
 from api.mesh import router as mesh_router
 from api.fabric import router as fabric_router
+from api.bridgeproxy import router as bridgeproxy_router
+from core.bridgeproxy import BridgeProxy
 from core.services import Services
 from core.device_sync import DeviceSync
 from core.rfile import RFile
@@ -81,6 +83,8 @@ async def lifespan(app: FastAPI):
     app.state.device_sync = device_sync
     rfile = RFile()
     app.state.rfile = rfile
+    bridgeproxy = BridgeProxy()
+    app.state.bridgeproxy = bridgeproxy
     try:
         await services.start()
         await device_sync.start()
@@ -89,7 +93,10 @@ async def lifespan(app: FastAPI):
     finally:
         try:
             try:
-                await rfile.close()
+                try:
+                    await bridgeproxy.close()
+                finally:
+                    await rfile.close()
             finally:
                 await device_sync.close()
         finally:
@@ -142,6 +149,7 @@ app.include_router(storage_router)
 app.include_router(services_router)
 app.include_router(mesh_router)
 app.include_router(fabric_router)
+app.include_router(bridgeproxy_router)
 app.include_router(rfile_router)
 app.include_router(plugins_router)
 app.include_router(system_router)

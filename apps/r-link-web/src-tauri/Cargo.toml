@@ -28,6 +28,7 @@ tauri-plugin-single-instance = "2"
 # 2.6+ requires Rust 1.90; retain compatibility with the project's Rust 1.89 build.
 tauri-plugin-autostart = "=2.5.1"
 reqwest = { version = "=0.13.5", default-features = false, features = ["json", "native-tls"] }
+r-link-core = { path = "../../../crates/r-link-core" }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.10.1"

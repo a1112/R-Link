@@ -7,6 +7,6 @@ export function accessibleRoutes(account: AccountState): RouteId[] {
   const user = account.session?.user;
   if (!account.session?.authenticated || !user || user.disabled || user.role === 'pending') return [];
   if (user.role === 'admin') return routes.map(route => route.id);
-  if (canOperate(account)) return ['network', 'remote', 'fabric', 'mesh', 'ssh', 'storage', 'rfile', 'downloads', 'analytics'];
-  return ['network', 'remote', 'fabric', 'mesh'];
+  if (canOperate(account)) return ['network', 'remote', 'fabric', 'mesh', 'bridgeproxy', 'ssh', 'storage', 'rfile', 'downloads', 'analytics'];
+  return ['network', 'remote', 'fabric', 'mesh', 'bridgeproxy'];
 }

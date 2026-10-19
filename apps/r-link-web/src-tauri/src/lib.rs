@@ -17,11 +17,17 @@ pub fn run() {
         Some(vec!["--autostart"]),
     ));
     #[cfg(desktop)]
+    let builder = builder.manage(bridgeproxy::BridgeProxyState::default());
+    #[cfg(desktop)]
     let builder = builder.invoke_handler(tauri::generate_handler![
         client_device::desktop_device_info,
         fabric_device::desktop_fabric_info,
         auth_browser::open_auth_login,
         auth_transport::desktop_auth_request,
+        bridgeproxy::bridgeproxy_adapter_info,
+        bridgeproxy::bridgeproxy_connect,
+        bridgeproxy::bridgeproxy_disconnect,
+        bridgeproxy::bridgeproxy_request,
         project_resource_monitor::project_resource_snapshot,
         desktop_tray::desktop_preferences,
         desktop_tray::set_close_to_tray,
@@ -75,3 +81,6 @@ mod auth_browser;
 
 #[cfg(desktop)]
 mod auth_transport;
+
+#[cfg(desktop)]
+mod bridgeproxy;

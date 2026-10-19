@@ -11,6 +11,7 @@ import subprocess
 import tarfile
 
 REQUIRED = {'R-Link-Server/main.py', 'R-Link-Server/requirements.txt',
+            'contracts/bridgeproxy-v1.json',
             'deploy/nas/requirements.lock', 'deploy/nas/compose.yaml',
             'deploy/nas/Dockerfile.server', 'deploy/nas/Dockerfile.web',
             'deploy/nas/nginx.conf', 'deploy/nas/.env.example',
@@ -32,7 +33,8 @@ def allowed(name):
     path = PurePosixPath(name)
     if any(part in {'build', 'dist', 'target', 'node_modules', '__pycache__', 'data', 'logs', 'config'} for part in path.parts):
         return False
-    if name in REQUIRED or name in {'.dockerignore', 'scripts/build_nas_package.py', 'docs/desktop-nas-rfile-20261003.md'}:
+    if name in REQUIRED or name in {'.dockerignore', 'scripts/build_nas_package.py',
+                                   'docs/desktop-nas-rfile-20261003.md', 'docs/bridgeproxy-core.md'}:
         return True
     if path.parent.as_posix() == 'deploy/nas':
         return path.name in NAS_FILES

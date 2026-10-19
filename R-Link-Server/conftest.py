@@ -14,5 +14,7 @@ def isolated_services(tmp_path, monkeypatch):
                  'R_LINK_NETBIRD_URL', 'R_LINK_NETBIRD_TOKEN', 'R_LINK_DEVICE_STALE_SECONDS',
                  'R_LINK_RFILE_URL', 'R_LINK_RFILE_BRIDGE_URL', 'R_LINK_RFILE_TOKEN',
                  'R_LINK_RFILE_SESSION_TOKEN', 'R_LINK_RFILE_ROOT', 'R_LINK_RFILE_CA_CERT',
+                 'R_LINK_BRIDGEPROXY_URL', 'R_LINK_BRIDGEPROXY_READ_TOKEN',
+                 'R_LINK_BRIDGEPROXY_CONTROL_TOKEN',
                  'RFILE_SERVICE_URL', 'RFILE_BRIDGE_URL', 'RFILE_SERVICE_ACCESS_TOKEN', 'RFILE_ALLOWED_ROOTS'):
         monkeypatch.delenv(name, raising=False)

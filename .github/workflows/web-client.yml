@@ -1,10 +1,10 @@
 name: Web client and API contract
 on:
   pull_request:
-    paths: ['package.json', 'package-lock.json', 'apps/r-link-web/**', 'R-Link-Server/**', 'docs/repository-consolidation/R-Link-Web/**', 'scripts/verify_web_migration.py', '.github/workflows/web-client.yml']
+    paths: ['package.json', 'package-lock.json', 'apps/r-link-web/**', 'R-Link-Server/**', 'crates/**', 'contracts/**', 'deploy/**', '.dockerignore', 'scripts/build_nas_package.py', 'docs/repository-consolidation/R-Link-Web/**', 'scripts/verify_web_migration.py', '.github/workflows/web-client.yml']
   push:
     branches: [main]
-    paths: ['package.json', 'package-lock.json', 'apps/r-link-web/**', 'R-Link-Server/**', 'docs/repository-consolidation/R-Link-Web/**', 'scripts/verify_web_migration.py', '.github/workflows/web-client.yml']
+    paths: ['package.json', 'package-lock.json', 'apps/r-link-web/**', 'R-Link-Server/**', 'crates/**', 'contracts/**', 'deploy/**', '.dockerignore', 'scripts/build_nas_package.py', 'docs/repository-consolidation/R-Link-Web/**', 'scripts/verify_web_migration.py', '.github/workflows/web-client.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -58,5 +58,6 @@ jobs:
       - run: rustup default stable
       - run: npm ci --ignore-scripts
       - run: npm run build
+      - run: cargo test --manifest-path ../../crates/r-link-core/Cargo.toml --locked --target-dir src-tauri/target
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib --features custom-protocol
       - run: cargo build --manifest-path src-tauri/Cargo.toml --locked --features custom-protocol

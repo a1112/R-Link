@@ -16,11 +16,13 @@ import { AccountGate } from './components/AccountPanel';
 import { accessibleRoutes } from './constants/access-routes';
 import { canOperate } from './api/account-access';
 import { ReadOnlyInventory } from './components/pages/ReadOnlyInventory';
+import { bridgeProxyApi } from './api/bridgeproxy';
 
 const RemoteView = React.lazy(() => import('./components/pages/RemoteView'));
 const FRPView = React.lazy(() => import('./components/pages/FRPView'));
 const MeshView = React.lazy(() => import('./components/pages/MeshView'));
 const FabricView = React.lazy(() => import('./components/pages/FabricView'));
+const BridgeProxyView = React.lazy(() => import('./components/pages/BridgeProxyView'));
 const DomainView = React.lazy(() => import('./components/pages/DomainView'));
 const StorageView = React.lazy(() => import('./components/pages/StorageView'));
 const RFileView = React.lazy(() => import('./components/pages/RFileView'));
@@ -42,6 +44,7 @@ export default function App() {
   const [theme, setTheme] = useState<ThemeName>('zinc');
   const [accessRevision, setAccessRevision] = useState(0);
   useEffect(() => {
+    if (isTauriRuntime()) void bridgeProxyApi.disconnect().catch(() => undefined);
     setSshTarget(null); setDeviceAction(null); setSshVisited(false);
     setActiveTab('network');
   }, [account.revision]);
@@ -78,6 +81,7 @@ export default function App() {
     if (account.status !== 'ready' || (account.config?.mode === 'oidc' && (!account.session?.authenticated || !account.session.user || account.session.user.disabled || account.session.user.role === 'pending'))) return <AccountGate actions={accountActions} />;
     if (!allowedRoutes.includes(activeTab)) return <p className="p-6">当前账户没有此页面的访问权限。</p>;
     if (activeTab === 'fabric') return <FabricView canManage={account.config?.mode !== 'oidc' || account.session?.user?.role === 'admin'} />;
+    if (activeTab === 'bridgeproxy') return <BridgeProxyView />;
     if (account.config?.mode === 'oidc' && !canOperate(account)) return <ReadOnlyInventory mesh={activeTab === 'mesh'} />;
     if (account.config?.mode === 'oidc' && account.session?.user?.role === 'operator' && activeTab === 'mesh') return <ReadOnlyInventory mesh />;
     switch (activeTab) {

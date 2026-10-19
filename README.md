@@ -6,6 +6,8 @@
 
 产品采用独立产品、统一入口、独立发版的方式推进：R-Link 负责设备与运维管理，Fabric 负责设备组网，BridgeProxy 负责代理出口共享与本机流量接管。职责、接口边界及后续集成路线见[产品分工](docs/product-boundaries-20261019.md)。
 
+“网络出口与代理”现通过独立的 R-Link Core 适配器接入 BridgeProxy Core，支持出口配置、在线配对、链路、分流规则、TUN/系统代理/应用代理、连接、诊断和升级下载。桌面版明确连接本机 Core，Web 版管理管理员配置的服务端本机 Core；两者各自授权，凭据保留在原生层或服务端。[核心架构](docs/core-architecture.md)与[接入配置和 API](docs/bridgeproxy-core.md)。
+
 ## 开发
 
 需要 Node.js 22+、npm、Python 3.12+；桌面构建另需 Rust 和对应系统的 Tauri 构建工具。
