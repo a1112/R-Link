@@ -268,6 +268,17 @@ it('requires both a platform feature and an available route before showing usabl
   expect(screen.getByRole('note').textContent).toContain('windows');
 });
 
+it('can clear imported Windows takeover flags on Unix without applying or starting the service', async () => {
+  replies.server['/v1/capabilities'].capabilities = { platform: 'linux', tun: false, system_proxy: false, application_proxy: false };
+  const cfg = resources()['/v1/config'].config as JsonObject;
+  cfg.tun_enabled = true; cfg.system_proxy = true;
+  await mount(); await tab('流量接管');
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '清除不支持的接管设置' })); });
+  expect(api.command).toHaveBeenCalledTimes(1);
+  expect(api.command).toHaveBeenCalledWith('server', { method: 'PATCH', path: '/v1/config', revision: r1,
+    body: { tun_enabled: false, system_proxy: false, apply: false } }, expect.any(AbortSignal));
+});
+
 it('refuses a command that is unavailable in the current Core manifest', async () => {
   (replies.server['/v1/capabilities'].routes as JsonObject[]).find(route => route.path === '/v1/service/start')!.available = false;
   await mount();

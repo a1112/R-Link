@@ -14,6 +14,8 @@
 
 Core 在 capabilities 中声明平台和能力，为不支持的写入返回 501；配置候选也不能借通用 PATCH 绕过平台限制。R-Link 的流量接管按钮同时检查 feature 和 route.available，所有命令在提交前核对当前清单。旧快照、缺失能力或未知路由不能当成已支持。
 
+若导入的 Windows 配置仍开启 TUN 或系统代理，Unix 的“流量接管”页可明确清除这些配置并保存；此操作不应用配置、不启动服务，也不尝试恢复另一系统的网络设置。
+
 ## 本机身份和存储
 
 - Windows 保留 DPAPI 及宿主 PID/FILETIME 核验。
@@ -38,9 +40,9 @@ Linux 桌面依赖 WebKitGTK 4.1、OpenSSL 和托盘相关库；macOS 配置最�
 | 检查 | 结果 |
 | --- | --- |
 | R-Link 原生 Core / Tauri | 11 项 / 36 项通过 |
-| R-Link 前端 | 276 项及窗口脚本 12 项通过，TypeScript/生产构建通过 |
+| R-Link 前端 | 277 项及窗口脚本 12 项通过，TypeScript/生产构建通过 |
 | 新 Core 与 R-Link 联调 | 在隔离目录启动真实 Core，原生 DPAPI/宿主身份、能力/快照/文档读取、只读权限和脱敏检查通过 |
-| BridgeProxy Core | Windows release 构建、101 项 Rust 测试及真实隔离 HTTP 代理 smoke 通过 |
+| BridgeProxy Core | Windows release 构建、102 项 Rust 测试及真实隔离 HTTP 代理 smoke 通过；静态 OpenAPI 字段完整性与实际 SAS 脱敏分别回归 |
 | BridgeProxy 独立 GUI | Windows release 编译检查通过；新增 Unix X11/Wayland、系统字体和能力门控 |
 | 脚本与合同 | 9 项离线资源、OpenAPI、Core/GUI 独立打包检查通过；四个 Unix 目标的官方引擎归档和 SHA-256 已核对 |
 
