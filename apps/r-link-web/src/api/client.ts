@@ -92,16 +92,17 @@ export class HttpClient {
     if (!headers.has('Content-Type') && !(fetchConfig.body instanceof FormData)) headers.set('Content-Type', 'application/json');
 
     try {
-      const response = await authenticatedFetch(url, {
+      const result = await authenticatedFetch(url, {
         ...fetchConfig,
         signal: controller.signal,
         headers,
-      });
-
-      const result = await this.handleResponse<T>(response);
+      }, response => this.handleResponse<T>(response));
       if (accountEpoch !== accountRequestEpoch()) throw new Error('账户或服务已更改，已忽略旧响应');
       return result;
     } catch (error) {
+      if ((error instanceof DOMException || error instanceof Error) && error.name === 'AbortError' && accountEpoch !== accountRequestEpoch()) {
+        throw new Error('账户或服务已更改，已忽略旧响应');
+      }
       if (error instanceof DOMException && error.name === 'AbortError') {
         if (callerSignal?.aborted) throw error;
         throw new Error(`请求超时: ${timeout}ms`);

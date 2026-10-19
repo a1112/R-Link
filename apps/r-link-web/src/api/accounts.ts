@@ -46,11 +46,10 @@ export const accountsApi = {
   desktopStart: async (signal?: AbortSignal) => (await desktopRequest<{ login_url: string; flow_id: string; poll_secret: string; expires_in: number }>('start', undefined, undefined, signal)).value,
   desktopExchange: (flow_id: string, poll_secret: string, signal?: AbortSignal) => desktopRequest<{ pending?: boolean; token?: string; expires_at?: number; user?: AccountUser }>('exchange', flow_id, poll_secret, signal),
   users: async (signal?: AbortSignal) => {
-    const response = await authenticatedFetch(serviceEndpoint('/api/auth/users'), { signal });
-    return (await response.json() as { users: AccountUser[] }).users;
+    const value = await authenticatedFetch(serviceEndpoint('/api/auth/users'), { signal }, response => response.json() as Promise<{ users: AccountUser[] }>);
+    return value.users;
   },
   updateUser: async (id: string, changes: { role?: AccountRole; disabled?: boolean }, signal?: AbortSignal) => {
-    const response = await authenticatedFetch(serviceEndpoint(`/api/auth/users/${encodeURIComponent(id)}`), { method: 'PATCH', body: JSON.stringify(changes), headers: { 'Content-Type': 'application/json' }, signal });
-    return await response.json() as AccountUser;
+    return await authenticatedFetch(serviceEndpoint(`/api/auth/users/${encodeURIComponent(id)}`), { method: 'PATCH', body: JSON.stringify(changes), headers: { 'Content-Type': 'application/json' }, signal }, response => response.json() as Promise<AccountUser>);
   },
 };

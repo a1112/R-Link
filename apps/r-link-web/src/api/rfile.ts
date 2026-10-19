@@ -26,8 +26,7 @@ export const rfileApi = {
     signal?.addEventListener('abort', abort, { once: true });
     const timeout = setTimeout(abort, 120000);
     try {
-      const response = await authenticatedFetch(`${API_CONFIG.baseURL}/api/rfile/download?${new URLSearchParams({ path })}`, { signal: controller.signal });
-      return await response.blob();
+      return await authenticatedFetch(`${API_CONFIG.baseURL}/api/rfile/download?${new URLSearchParams({ path })}`, { signal: controller.signal }, response => response.blob());
     } finally {
       clearTimeout(timeout); signal?.removeEventListener('abort', abort);
     }

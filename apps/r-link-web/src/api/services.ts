@@ -34,5 +34,5 @@ export const servicesApi = {
   createDownload: (url: string, name: string) => http.post<Download>('/api/downloads', { url, name }),
   downloadAction: (id: string, action: 'pause' | 'resume' | 'cancel') => http.post<Download>(`/api/downloads/${id}/${action}`),
   deleteDownload: (id: string) => http.delete(`/api/downloads/${id}`),
-  downloadFile: async (id: string) => (await authenticatedFetch(`${API_CONFIG.baseURL}/api/downloads/${id}/file`)).blob(),
+  downloadFile: (id: string) => authenticatedFetch(`${API_CONFIG.baseURL}/api/downloads/${id}/file`, {}, response => response.blob()),
 };

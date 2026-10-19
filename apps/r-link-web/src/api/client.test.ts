@@ -1,6 +1,8 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 const request = vi.hoisted(() => vi.fn());
-vi.mock('./authenticated-fetch', () => ({ authenticatedFetch: request }));
+vi.mock('./authenticated-fetch', () => ({
+  authenticatedFetch: async (url: string, init: RequestInit, consume: (response: Response) => Promise<unknown>) => consume(await request(url, init)),
+}));
 import { HttpClient } from './client';
 import { resetAccount } from './account-access';
 

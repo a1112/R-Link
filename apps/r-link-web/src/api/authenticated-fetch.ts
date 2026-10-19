@@ -2,8 +2,10 @@ import { apiOrigin, getServiceKey } from './service-access';
 import { expireAccount, requestAccountAccess, serviceBase, trackAccountRequest } from './account-access';
 export { apiOrigin } from './service-access';
 
-/** OIDC uses its own session; legacy local/service access remains available. */
-export async function authenticatedFetch(input: string | URL, init: RequestInit = {}): Promise<Response> {
+export function authenticatedFetch(input: string | URL, init?: RequestInit): Promise<Response>;
+export function authenticatedFetch<T>(input: string | URL, init: RequestInit, consume: (response: Response) => Promise<T>): Promise<T>;
+/** Pass a body consumer to retain cancellation ownership until reading finishes. */
+export async function authenticatedFetch<T>(input: string | URL, init: RequestInit = {}, consume?: (response: Response) => Promise<T>): Promise<Response | T> {
   const url = new URL(input, window.location.href);
   if (url.origin !== apiOrigin()) throw new Error('拒绝向未配置的服务发送访问密钥');
   const headers = new Headers(init.headers);
@@ -40,7 +42,10 @@ export async function authenticatedFetch(input: string | URL, init: RequestInit 
       if (access.mode === 'oidc' && response.status === 403) window.dispatchEvent(new Event('r-link-account-refresh'));
       throw new Error(typeof payload?.detail === 'string' ? payload.detail : `HTTP ${response.status}`);
     }
-    return response;
+    if (!consume) return response;
+    const value = await consume(response);
+    if (!request.isCurrent()) throw new DOMException('账户或服务已切换', 'AbortError');
+    return value;
   } finally {
     request.done();
   }
