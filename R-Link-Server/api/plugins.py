@@ -17,14 +17,14 @@ from pathlib import Path
 
 from core.plugin_manager import PluginManager
 from core.plugin_interface import PluginState
-from core.auth import require_admin
+from core.auth import require_plugin_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/plugins",
     tags=["plugins"],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_plugin_admin)],
 )
 
 # 全局插件管理器实例（在 main.py 中初始化）
@@ -192,7 +192,7 @@ async def get_plugin_status(name: str):
 
 
 @router.get("/status/all")
-async def get_all_plugin_status():
+async def get_all_plugin_status(user: dict = Depends(require_plugin_admin)):
     """获取所有插件状态"""
     if not plugin_manager:
         raise HTTPException(status_code=500, detail="Plugin manager not initialized")
@@ -207,7 +207,7 @@ async def get_all_plugin_status():
             "uptime": state.uptime if state else 0,
             "memory_usage": state.memory_usage if state else 0,
             "cpu_usage": state.cpu_usage if state else 0,
-            "last_error": state.last_error if state else None
+            "last_error": state.last_error if state and user.get('role') == 'admin' else None
         }
         for name, state in statuses.items()
     }

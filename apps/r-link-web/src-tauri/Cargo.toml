@@ -18,6 +18,7 @@ monitor-sysinfo = { package = "sysinfo", version = "0.33", default-features = fa
 tauri = { version = "2", features = ["devtools", "tray-icon"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tauri-plugin-opener = "2"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

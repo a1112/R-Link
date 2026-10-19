@@ -20,7 +20,9 @@ from main import app
 
 
 def test_all_management_routes_require_auth_except_public_endpoints() -> None:
-    public_paths = {"/", "/health"}
+    public_paths = {'/', '/health', '/api/auth/config', '/api/auth/login', '/api/auth/callback',
+                    '/api/auth/desktop/start', '/api/auth/desktop/login', '/api/auth/desktop/exchange',
+                    '/api/fabric/enrollment'}
     # OpenAPI includes mounted routers across FastAPI versions; checking only
     # app.routes can silently skip all management endpoints with lazy routers.
     checked = 0

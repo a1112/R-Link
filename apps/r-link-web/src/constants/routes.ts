@@ -22,6 +22,7 @@ export type RouteId =
   | 'analytics'
   | 'network'
   | 'mesh'
+  | 'fabric'
   | 'remote'
   | 'frp'
   | 'domains'
@@ -69,6 +70,10 @@ export const routes: RouteConfig[] = [
     icon: Network,
     title: 'NetBird 虚拟组网',
     description: '真实节点、入网密钥、访问策略和网络路由',
+  },
+  {
+    id: 'fabric', label: '自研组网', icon: Network, title: 'R-Link 自研组网',
+    description: '自研控制面、直连探测和中转路径',
   },
   {
     id: 'remote',
@@ -138,7 +143,7 @@ export const routes: RouteConfig[] = [
 
 export const routesByGroupId: Record<string, RouteId[]> = {
   overview: ['network', 'remote'],
-  network: ['mesh', 'ssh', 'console', 'frp', 'domains', 'dashboard', 'analytics'],
+  network: ['fabric', 'mesh', 'ssh', 'console', 'frp', 'domains', 'dashboard', 'analytics'],
   storage: ['storage', 'rfile'],
   extensions: ['plugins', 'downloads'],
 };

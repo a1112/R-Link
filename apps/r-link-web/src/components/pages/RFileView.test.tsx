@@ -4,6 +4,7 @@ import { RFileView } from './RFileView';
 import { saveBlob } from '../../utils/download';
 import type { RFileStatus } from '../../api/rfile';
 import { setServiceKey } from '../../api/service-access';
+import { updateAccount } from '../../api/account-access';
 vi.mock('../../utils/download', () => ({ saveBlob: vi.fn() }));
 
 const state = (enabled = false): RFileStatus => ({ watch: { url: 'http://127.0.0.1:18080', state: 'online', error: null, checked_at: null },
@@ -18,6 +19,7 @@ let currentListing = listing();
 let fetchMock: ReturnType<typeof vi.fn<(url: string, init?: RequestInit) => Promise<Response>>>;
 beforeEach(() => {
   setServiceKey('operator-key');
+  updateAccount({ status: 'ready', config: { mode: 'service', login_enabled: false, desktop_login_enabled: false }, session: null, error: '' });
   currentState = state(); currentListing = listing();
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const endpoint = new URL(url);

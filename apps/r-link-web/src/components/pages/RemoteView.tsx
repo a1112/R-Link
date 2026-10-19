@@ -10,7 +10,7 @@ const buttonStyle = 'rounded border px-3 py-2 disabled:opacity-50';
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 export type DeviceInitialAction = { kind: 'add' } | { kind: 'edit'; deviceId: string };
-export function RemoteView({ onSsh, initialAction, onInitialActionHandled }: { onSsh?: (device: Device) => void; initialAction?: DeviceInitialAction | null; onInitialActionHandled?: () => void }) {
+export function RemoteView({ onSsh, initialAction, onInitialActionHandled, canManageMembership = true }: { onSsh?: (device: Device) => void; initialAction?: DeviceInitialAction | null; onInitialActionHandled?: () => void; canManageMembership?: boolean }) {
   const handledInitialAction = useRef<DeviceInitialAction | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [management, setManagement] = useState<DeviceManagementStatus | null>(null);
@@ -103,11 +103,12 @@ export function RemoteView({ onSsh, initialAction, onInitialActionHandled }: { o
   const gateways = devices.filter(device => device.source === 'netbird' && device.connection_status !== 'revoked' && device.id !== editing);
   const unavailableGatewayId = form?.gateway_id && !gateways.some(device => device.id === form.gateway_id) ? form.gateway_id : null;
   const unavailableGateway = devices.find(device => device.id === unavailableGatewayId);
-  const editingPeer = devices.find(device => device.id === editing)?.source === 'netbird';
+  const editingSource = devices.find(device => device.id === editing)?.source;
+  const editingPeer = editingSource === 'netbird' || editingSource === 'fabric';
   const updateDevice = (saved: Device) => setDevices(previous => [...previous.filter(item => item.id !== saved.id), saved]);
   const edit = useCallback((device?: Device) => {
     setEditing(device?.id);
-    setForm(device ? { name: device.name, host: device.host, port: device.port, username: device.username, device_type: device.device_type ?? 'other', platform: device.platform ?? 'unknown', tags: device.tags ?? [], notes: device.notes ?? '', access_mode: device.access_mode ?? (device.source === 'netbird' ? 'none' : 'ssh'), web_scheme: device.web_scheme ?? 'https', gateway_id: device.gateway_id ?? null } : { ...empty, tags: [] });
+    setForm(device ? { name: device.name, host: device.host, port: device.port, username: device.username, device_type: device.device_type ?? 'other', platform: device.platform ?? 'unknown', tags: device.tags ?? [], notes: device.notes ?? '', access_mode: device.access_mode ?? (device.source === 'netbird' || device.source === 'fabric' ? 'none' : 'ssh'), web_scheme: device.web_scheme ?? 'https', gateway_id: device.gateway_id ?? null } : { ...empty, tags: [] });
     setTagInput((device?.tags ?? []).join(', '));
   }, []);
   useEffect(() => {
@@ -253,16 +254,16 @@ export function RemoteView({ onSsh, initialAction, onInitialActionHandled }: { o
         {onSsh && deviceAccessMode(device) === 'ssh' && <button disabled={busy} onClick={() => onSsh(device)}>SSH 连接</button>}
         {!busy && deviceWebUrl(device) && <a href={deviceWebUrl(device)!} target="_blank" rel="noreferrer">打开 Web 服务</a>}
         <button disabled={busy} onClick={() => edit(device)}>编辑</button>
-        {device.source !== 'netbird' && !device.gateway_id && <button disabled={busy || !management?.configured} onClick={() => { setLinking(device.id); setPeerId(''); }}>关联组网节点</button>}
-        {device.source === 'netbird' && device.peer_id && device.connection_status !== 'revoked' && <button disabled={busy || !management?.configured} onClick={() => setRevoking(device.id)}>撤销入网</button>}
+        {canManageMembership && device.source !== 'netbird' && device.source !== 'fabric' && !device.gateway_id && <button disabled={busy || !management?.configured} onClick={() => { setLinking(device.id); setPeerId(''); }}>关联组网节点</button>}
+        {canManageMembership && device.source === 'netbird' && device.peer_id && device.connection_status !== 'revoked' && <button disabled={busy || !management?.configured} onClick={() => setRevoking(device.id)}>撤销入网</button>}
         <button disabled={busy} onClick={() => setDeleting(device.id)}>删除</button>
       </div>
       {device.gateway_id && <p className="text-xs text-[var(--c-400)]">如需直接关联组网节点，请先解除网关关联。</p>}
-      {linking === device.id && device.source !== 'netbird' && !device.gateway_id && <form className="text-sm space-y-2" onSubmit={event => { event.preventDefault(); void perform(async (signal, active) => {
+      {canManageMembership && linking === device.id && device.source !== 'netbird' && device.source !== 'fabric' && !device.gateway_id && <form className="text-sm space-y-2" onSubmit={event => { event.preventDefault(); void perform(async (signal, active) => {
         if (!/^[A-Za-z0-9_-]{1,80}$/.test(peerId.trim())) throw new Error('peer ID 只能包含字母、数字、下划线及短横线，最多 80 个字符');
         const linked = await devicesApi.link(device.id, peerId.trim(), signal); if (active()) { updateDevice(linked); setLinking(undefined); setNotice('已关联指定组网节点。'); }
       }); }}><p>请输入已入网节点的 peer ID。明确关联会保留本地名称与标签，不按 IP 自动合并。</p><label>组网 peer ID<input className={inputStyle} required maxLength={80} value={peerId} disabled={busy} onChange={event => setPeerId(event.target.value)} /></label><button disabled={busy} type="submit" className="mr-3">确认关联</button><button type="button" disabled={busy} onClick={() => setLinking(undefined)}>取消关联</button></form>}
-      {revoking === device.id && <div className="text-sm space-y-2"><p>确认撤销此设备的真实组网身份？设备将失去组网接入，清单记录保留为已撤销。</p><button className="mr-3" disabled={busy} onClick={() => void perform(async (signal, active) => {
+      {canManageMembership && revoking === device.id && <div className="text-sm space-y-2"><p>确认撤销此设备的真实组网身份？设备将失去组网接入，清单记录保留为已撤销。</p><button className="mr-3" disabled={busy} onClick={() => void perform(async (signal, active) => {
         const revoked = await devicesApi.revoke(device.id, signal); if (!active()) return;
         updateDevice(revoked); setRevoking(undefined); setNotice('已撤销入网，清单记录已保留。'); await refresh(signal, generation.current);
       })}>确认撤销入网</button><button disabled={busy} onClick={() => setRevoking(undefined)}>取消撤销</button></div>}

@@ -72,7 +72,7 @@ def test_default_bind_is_local_and_remote_bind_requires_key(monkeypatch):
     assert server_host() == '0.0.0.0'
 
 
-@pytest.mark.parametrize('path', ['/session', '/me', '/logout', '/verify', '/refresh'])
+@pytest.mark.parametrize('path', ['/me', '/verify', '/refresh'])
 def test_cloud_account_endpoints_are_removed(path):
     client = TestClient(app)
     try:

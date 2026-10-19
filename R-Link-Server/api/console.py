@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core.auth import require_admin
+from core import identity
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,8 @@ async def get_console_status():
 @router.post("/start")
 async def start_console():
     """启动控制台服务"""
+    if identity.enabled():
+        raise HTTPException(503, 'Console requires an authenticated proxy in multi-user mode; use authenticated SSH')
     plugin = get_console_plugin()
     if not getattr(plugin, "instance", None):
         if not _plugin_manager.start_plugin("ttyd-console"):
@@ -91,6 +94,8 @@ async def stop_console():
 @router.post("/restart")
 async def restart_console():
     """重启控制台服务"""
+    if identity.enabled():
+        raise HTTPException(503, 'Console requires an authenticated proxy in multi-user mode; use authenticated SSH')
     plugin = get_console_plugin()
 
     if hasattr(plugin, 'instance') and plugin.instance:
@@ -104,6 +109,8 @@ async def restart_console():
 @router.get("/url")
 async def get_console_url():
     """获取控制台访问地址"""
+    if identity.enabled():
+        raise HTTPException(503, 'Console requires an authenticated proxy in multi-user mode; use authenticated SSH')
     plugin = get_console_plugin()
 
     if hasattr(plugin, 'instance') and plugin.instance:
@@ -117,6 +124,8 @@ async def get_console_url():
 @router.post("/config")
 async def update_console_config(request: ConsoleConfigRequest):
     """更新控制台配置"""
+    if identity.enabled() and request.enable_nginx_proxy:
+        raise HTTPException(503, 'Unauthenticated console proxy is disabled in multi-user mode')
     plugin = get_console_plugin()
 
     config = {

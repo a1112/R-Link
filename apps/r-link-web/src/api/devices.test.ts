@@ -1,5 +1,7 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { devicesApi } from './devices';
+import { updateAccount } from './account-access';
+beforeEach(() => updateAccount({ status: 'ready', config: { mode: 'local', login_enabled: false, desktop_login_enabled: false }, session: null, error: '' }));
 afterEach(() => { vi.unstubAllGlobals(); });
 it('uses authenticated API paths and encoded identifiers for device management actions', async () => {
   const fetcher = vi.fn().mockImplementation(async () => new Response('{}', { status: 200 }));
