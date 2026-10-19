@@ -4,7 +4,7 @@ import { serviceEndpoint, trackAccountRequest } from './account-access';
 
 export type BridgeTarget = 'local' | 'server';
 export type JsonObject = Record<string, unknown>;
-export type BridgeAdapter = { configured: boolean; control_configured: boolean; supported?: boolean; target: BridgeTarget; endpoint_scope: string; data_dir?: string };
+export type BridgeAdapter = { configured: boolean; control_configured: boolean; supported?: boolean; platform?: string; credential_protection?: string; target: BridgeTarget; endpoint_scope: string; data_dir?: string };
 export type BridgeRequest = { method: string; path: string; body?: unknown; revision?: string; idempotency_key?: string };
 type Envelope = { api_version: string; data?: unknown; error?: { code?: string; message?: string; details?: unknown } };
 type NativeResponse = { status: number; body: Envelope; etag?: string };

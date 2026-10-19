@@ -1,7 +1,7 @@
 # R-Link 的 BridgeProxy Core 接入
 
 R-Link 可管理独立运行的 BridgeProxy Core。本机桌面目标和服务端目标分别选择，
-不会把部署在 NAS/Linux 的服务端回环地址当成用户 Windows 电脑。未配置时返回
+不会把部署在 NAS/Linux 的服务端回环地址当成用户桌面电脑。未配置时返回
 不可用，R-Link 不会启动 Core、安装网卡、修改代理或伪造运行状态。
 
 ## 本机桌面目标
@@ -19,11 +19,28 @@ R-Link 可管理独立运行的 BridgeProxy Core。本机桌面目标和服务�
 `--idle` 只启动核心管理宿主，不启动代理流量接管；服务启停由后续明确操作决定。
 端口 0 选择可用控制端口，R-Link 从受保护的元数据读取真实端口，无需在界面输入。
 在 R-Link 填写 `C:\BridgeProxyCore\R-Link-data`，按需勾选本机控制授权并连接。
-数据目录和凭据应由同一 Windows 用户创建；只读连接不提供验证码或写操作。
+数据目录和凭据应由同一系统用户创建；只读连接不提供验证码或写操作。
 
-本机凭据通过原生 `r-link-core` 适配器读取 DPAPI，不显示到页面。授权保留在当前
+本机凭据通过原生 `r-link-core` 适配器读取，不显示到页面。Windows 使用 DPAPI；
+Linux/macOS 使用同用户的 0700 数据目录、0600 凭据文件，并核对宿主进程身份。
+Unix 权限隔离存储不等同于 DPAPI 加密，不能将数据目录直接当作跨系统密文迁移。
+授权保留在当前
 R-Link 进程内，账号切换会撤销。断开管理连接或关闭 R-Link 不会停止独立 Core。
-TUN 要求 Core 具有管理员权限；本机提权、安装和双端验证码核对仍须明确确认。
+Windows 的 TUN 要求 Core 具有管理员权限；Linux/macOS 本轮未开放 TUN、系统代理、
+持久应用代理及 Windows 节点升级，界面禁用相关操作，Core 返回明确 501。
+普通代理、反向隧道、配对、分流、流量、诊断及 API 可使用同一业务合同。
+
+Linux/macOS 的独立 Core 启动示例：
+
+```sh
+mkdir -p "$HOME/.local/share/bridgeproxy"
+chmod 700 "$HOME/.local/share/bridgeproxy"
+./bridgeproxy-core --idle --data-dir "$HOME/.local/share/bridgeproxy" --control-port 0
+```
+
+在同一用户的 R-Link 桌面填写上述目录的完整绝对路径；不要直接输入 `$HOME` 或 `~`。
+文件权限不正确或宿主已退出时拒绝连接。Linux x64/ARM64、macOS Intel/Apple Silicon
+构建与验证流程见[跨平台说明](cross-platform-core.md)。
 
 Core 包及 BridgeProxy GUI 包分别构建和打包，默认版本均为本轮源码中的 0.6.1；
 实际发布前应按各产品版本策略发布。此接入需要包含 capabilities/snapshot 等新增
@@ -52,7 +69,8 @@ NAS 源码发布包显式包含该合同，缺失时打包失败。
 
 持有 R-Link 管理员权限并不自动拥有其他电脑的 Core。配置以上变量是在明确授予
 R-Link 管理这个服务端本机实例的权限。Core 的系统代理和应用代理操作作用于运行
-Core 的 Windows 用户；TUN、配对及安装仍遵循 Core 自身的权限和本机确认要求。
+Core 的系统用户；可用能力由 `/v1/capabilities` 返回的平台及 route.available 决定。
+配对及安装仍遵循 Core 自身的权限和本机确认要求。
 
 ## API 合同
 

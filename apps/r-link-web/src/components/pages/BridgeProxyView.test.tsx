@@ -34,7 +34,17 @@ function fixture(target: BridgeTarget): Record<string, JsonObject> {
       '/v1/diagnostics': { running: false, run_id: null, checks: [] }, '/v1/updates': { supported: true, phase: 'idle', ready: false },
     } },
     '/v1/capabilities': { manifest_version: 1, host: { instance_id: instance }, core: { id: 'bridgeproxy-core', version: '0.6.1' },
-      routes: [{ method: 'POST', path: '/v1/updates/download', available: true }, { method: 'POST', path: '/v1/tokens/rotate', available: true }] },
+      capabilities: { platform: 'windows', tun: true, system_proxy: true, application_proxy: true },
+      routes: [
+        ['POST', '/v1/service/start'], ['POST', '/v1/service/stop'], ['POST', '/v1/service/restart'],
+        ['PATCH', '/v1/config'], ['POST', '/v1/config/validate'], ['PUT', '/v1/rules'],
+        ['POST', '/v1/pairing/window'], ['POST', '/v1/pairings/request'], ['POST', '/v1/pairings/{id}/decision'],
+        ['PATCH', '/v1/links/{id}'], ['DELETE', '/v1/links/{id}'],
+        ['PUT', '/v1/tun'], ['PUT', '/v1/system-proxy'], ['PUT', '/v1/application-proxy'], ['POST', '/v1/system-proxy/restore'],
+        ['DELETE', '/v1/connections'], ['DELETE', '/v1/connections/{id}'],
+        ['POST', '/v1/diagnostics/run'], ['POST', '/v1/diagnostics/cancel'], ['DELETE', '/v1/logs'],
+        ['POST', '/v1/updates/download'], ['POST', '/v1/tokens/rotate'],
+      ].map(([method, path]) => ({ method, path, available: true })) },
     '/v1/operations': { instance_id: instance, operations: [] },
     '/v1/pairings/control': { window_open: true, pending: [{ id: 'pair_01', peer_name: 'Trusted peer', local_role: 'consumer', verification_code: '12345678', expires_in_secs: 100, local_approved: false, peer_approved: false }] },
   };
@@ -235,6 +245,35 @@ it('shows only strictly newer authenticated update offers and sends their exact 
   expect(screen.queryByText(/Same peer|Older peer/)).toBeNull();
   await act(async () => { fireEvent.click(buttons[0]); });
   expect(api.command).toHaveBeenCalledWith('server', { method: 'POST', path: '/v1/updates/download', body: { link_id: 'newer', sha256: 'f'.repeat(64) } }, expect.any(AbortSignal));
+});
+
+it.each(['linux', 'macos'])('keeps proxy controls usable and disables unsupported native takeover on %s', async platform => {
+  replies.server['/v1/capabilities'].capabilities = { platform, tun: false, system_proxy: false, application_proxy: false };
+  await mount();
+  expect(disabled('启动代理')).toBe(false);
+  expect(screen.getAllByText('当前平台未提供')).toHaveLength(2);
+  await tab('流量接管');
+  for (const label of ['启用TUN', '关闭TUN', '启用系统代理', '关闭系统代理', '启用后台应用代理兼容', '恢复启用前的环境', '恢复系统代理备份']) expect(disabled(label)).toBe(true);
+  expect(screen.getAllByRole('note')).toHaveLength(3);
+  fireEvent.click(screen.getByRole('button', { name: '启用TUN' }));
+  expect(api.command).not.toHaveBeenCalled();
+});
+
+it('requires both a platform feature and an available route before showing usable takeover controls', async () => {
+  const manifest = replies.server['/v1/capabilities'];
+  (manifest.routes as JsonObject[]).find(route => route.path === '/v1/tun')!.available = false;
+  await mount(); await tab('流量接管');
+  expect(disabled('启用TUN')).toBe(true);
+  expect(disabled('启用系统代理')).toBe(false);
+  expect(screen.getByRole('note').textContent).toContain('windows');
+});
+
+it('refuses a command that is unavailable in the current Core manifest', async () => {
+  (replies.server['/v1/capabilities'].routes as JsonObject[]).find(route => route.path === '/v1/service/start')!.available = false;
+  await mount();
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: '启动代理' })); });
+  expect(api.command).not.toHaveBeenCalled();
+  expect(screen.getByRole('alert').textContent).toContain('未开放此操作');
 });
 
 it.each([

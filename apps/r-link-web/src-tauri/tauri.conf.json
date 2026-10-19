@@ -35,7 +35,7 @@
     "shortDescription": "R-Link Plugin Management System",
     "longDescription": "A comprehensive plugin management system for remote services and applications.",
     "macOS": {
-      "minimumSystemVersion": "10.13",
+      "minimumSystemVersion": "10.15",
       "entitlements": null,
       "exceptionDomain": "",
       "frameworks": [],

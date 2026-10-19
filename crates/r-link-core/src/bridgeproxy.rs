@@ -8,7 +8,10 @@ use std::{
 };
 
 const CONTRACT: &str = include_str!("../../../contracts/bridgeproxy-v1.json");
+#[cfg(windows)]
 const MAGIC: &[u8] = b"BRIDGEPROXY-CONTROL-DPAPI-1\0";
+#[cfg(not(windows))]
+const MAGIC: &[u8] = b"BRIDGEPROXY-CONTROL-UNIX-1\0";
 const MAX_RESPONSE: usize = 4 * 1024 * 1024;
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -83,9 +86,12 @@ pub struct CoreResponse {
 pub struct BridgeProxyClient {
     data_dir: PathBuf,
     allow_control: bool,
+    // Keep the granted directory's inode stable across renames/ancestor changes.
+    #[cfg(unix)]
+    directory: std::sync::Arc<File>,
 }
 
-// Deliberately not Debug/Serialize: the current Windows user's DPAPI credentials.
+// Deliberately not Debug/Serialize: credentials belong to the current OS account.
 #[derive(Deserialize)]
 struct Credentials {
     format: u8,
@@ -99,20 +105,34 @@ struct Credentials {
 
 impl BridgeProxyClient {
     pub fn connect(directory: impl AsRef<Path>, allow_control: bool) -> Result<Self, String> {
-        #[cfg(not(windows))]
-        return Err("本机 BridgeProxy Core 接入目前仅支持 Windows".into());
-        #[cfg(windows)]
+        #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+        return Err("当前平台尚不支持本机 BridgeProxy Core 接入".into());
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
         {
             let path = directory.as_ref();
             if !path.is_absolute() {
                 return Err("请选择 Core 的绝对数据目录".into());
             }
+            // Do not turn a user-supplied symlink into an apparently trusted directory.
+            #[cfg(unix)]
+            if path
+                .symlink_metadata()
+                .map_err(|_| "Core 数据目录不存在或不可读取")?
+                .file_type()
+                .is_symlink()
+            {
+                return Err("Core 数据目录不能是符号链接".into());
+            }
             let data_dir = path
                 .canonicalize()
                 .map_err(|_| "Core 数据目录不存在或不可读取")?;
+            #[cfg(unix)]
+            let directory = std::sync::Arc::new(open_unix_directory(&data_dir)?);
             let client = Self {
                 data_dir,
                 allow_control,
+                #[cfg(unix)]
+                directory,
             };
             client.credentials()?;
             Ok(client)
@@ -120,23 +140,32 @@ impl BridgeProxyClient {
     }
 
     pub fn info(&self) -> Value {
-        json!({"configured":true,"control_configured":self.allow_control,"target":"local","endpoint_scope":"desktop-loopback","data_dir":self.data_dir.to_string_lossy(),"api_version":"v1"})
+        json!({"configured":true,"control_configured":self.allow_control,"supported":local_supported(),"platform":std::env::consts::OS,"credential_protection":credential_protection(),"target":"local","endpoint_scope":"desktop-loopback","data_dir":self.data_dir.to_string_lossy(),"api_version":"v1"})
     }
 
     fn credentials(&self) -> Result<Credentials, String> {
-        let path = self.data_dir.join("control-api.protected");
-        reject_reparse(&self.data_dir)?;
-        reject_reparse(&path)?;
-        let mut bytes = Vec::new();
-        File::open(path)
-            .map_err(|_| "Core 凭据尚不可用，请先启动 Core API")?
-            .take(65537)
-            .read_to_end(&mut bytes)
-            .map_err(|_| "无法读取 Core 凭据")?;
+        #[cfg(not(unix))]
+        let mut bytes = {
+            let path = self.data_dir.join("control-api.protected");
+            reject_reparse(&self.data_dir)?;
+            reject_reparse(&path)?;
+            let mut bytes = Vec::new();
+            File::open(path)
+                .map_err(|_| "Core 凭据尚不可用，请先启动 Core API")?
+                .take(65537)
+                .read_to_end(&mut bytes)
+                .map_err(|_| "无法读取 Core 凭据")?;
+            bytes
+        };
+        #[cfg(unix)]
+        let mut bytes = read_unix_credentials_from_directory(&self.directory)?;
         if bytes.len() > 65536 || !bytes.starts_with(MAGIC) {
+            bytes.fill(0);
             return Err("Core 凭据格式无效".into());
         }
-        let mut plain = unprotect(&bytes[MAGIC.len()..])?;
+        let decoded = unprotect(&bytes[MAGIC.len()..]);
+        bytes.fill(0);
+        let mut plain = decoded?;
         let value = serde_json::from_slice::<Credentials>(&plain)
             .map_err(|_| "Core 凭据格式无效".to_string());
         plain.fill(0);
@@ -160,6 +189,20 @@ impl BridgeProxyClient {
         // Reload after every request boundary: rotations are observed without retrying writes.
         let credentials = self.credentials()?;
         send(request, route, credentials).await
+    }
+}
+
+pub const fn local_supported() -> bool {
+    cfg!(any(windows, target_os = "linux", target_os = "macos"))
+}
+
+pub const fn credential_protection() -> &'static str {
+    if cfg!(windows) {
+        "windows-dpapi"
+    } else if cfg!(any(target_os = "linux", target_os = "macos")) {
+        "unix-owner-only"
+    } else {
+        "unsupported"
     }
 }
 
@@ -364,9 +407,65 @@ fn reject_reparse(path: &Path) -> Result<(), String> {
     }
     Ok(())
 }
-#[cfg(not(windows))]
+#[cfg(not(any(unix, windows)))]
 fn reject_reparse(_: &Path) -> Result<(), String> {
-    Err("本机 Core 凭据仅支持 Windows".into())
+    Err("当前平台尚不支持本机 Core 凭据".into())
+}
+
+#[cfg(unix)]
+fn open_unix_directory(directory: &Path) -> Result<File, String> {
+    use std::os::unix::fs::OpenOptionsExt;
+    File::options()
+        .read(true)
+        .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(directory)
+        .map_err(|_| "Core 数据目录不可读取，或为符号链接".into())
+}
+
+#[cfg(all(unix, test))]
+fn read_unix_credentials(directory: &Path) -> Result<Vec<u8>, String> {
+    read_unix_credentials_from_directory(&open_unix_directory(directory)?)
+}
+
+/// Open the credential relative to the directory originally granted at connect.
+/// O_NOFOLLOW and descriptor metadata prevent path replacement and link races.
+#[cfg(unix)]
+fn read_unix_credentials_from_directory(directory: &File) -> Result<Vec<u8>, String> {
+    use std::os::{
+        fd::{AsRawFd, FromRawFd},
+        unix::fs::MetadataExt,
+    };
+    let uid = unsafe { libc::geteuid() };
+    let metadata = directory
+        .metadata()
+        .map_err(|_| "无法检查 Core 数据目录权限")?;
+    if !metadata.is_dir() || metadata.uid() != uid || metadata.mode() & 0o7777 != 0o700 {
+        return Err("Core 数据目录须属于当前系统账户，且权限为 0700".into());
+    }
+    let fd = unsafe {
+        libc::openat(
+            directory.as_raw_fd(),
+            b"control-api.protected\0".as_ptr().cast(),
+            libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK,
+        )
+    };
+    if fd < 0 {
+        return Err("Core 凭据尚不可用，请先启动 Core API；凭据不能是符号链接".into());
+    }
+    let file = unsafe { File::from_raw_fd(fd) };
+    let metadata = file.metadata().map_err(|_| "无法检查 Core 凭据权限")?;
+    if !metadata.is_file()
+        || metadata.uid() != uid
+        || metadata.nlink() != 1
+        || metadata.mode() & 0o7777 != 0o600
+    {
+        return Err("Core 凭据须属于当前系统账户、权限为 0600，且不能是链接".into());
+    }
+    let mut bytes = Vec::new();
+    file.take(65537)
+        .read_to_end(&mut bytes)
+        .map_err(|_| "无法读取 Core 凭据")?;
+    Ok(bytes)
 }
 
 #[cfg(windows)]
@@ -404,9 +503,14 @@ fn unprotect(bytes: &[u8]) -> Result<Vec<u8>, String> {
     }
     Ok(plain)
 }
-#[cfg(not(windows))]
+#[cfg(unix)]
+fn unprotect(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    // The owner-only file is the Unix OS-account boundary; never export it to the UI.
+    Ok(bytes.to_vec())
+}
+#[cfg(not(any(unix, windows)))]
 fn unprotect(_: &[u8]) -> Result<Vec<u8>, String> {
-    Err("本机 Core 凭据仅支持 Windows".into())
+    Err("当前平台尚不支持本机 Core 凭据".into())
 }
 
 #[cfg(windows)]
@@ -446,7 +550,71 @@ fn process_matches(pid: u32, expected: u64) -> bool {
         ok && running && created == expected
     }
 }
-#[cfg(not(windows))]
+#[cfg(target_os = "linux")]
+fn process_matches(pid: u32, expected: u64) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    if pid == 0 || expected == 0 {
+        return false;
+    }
+    let directory = PathBuf::from(format!("/proc/{pid}"));
+    let uid = unsafe { libc::geteuid() };
+    if !directory
+        .metadata()
+        .is_ok_and(|metadata| metadata.uid() == uid)
+    {
+        return false;
+    }
+    std::fs::read_to_string(directory.join("stat"))
+        .ok()
+        .and_then(|stat| linux_process_start(&stat))
+        == Some(expected)
+}
+
+// comm may contain spaces or closing parentheses. Only the final ") " delimits it.
+#[cfg(any(target_os = "linux", test))]
+fn linux_process_start(stat: &str) -> Option<u64> {
+    let (_, fields) = stat.rsplit_once(") ")?;
+    let mut fields = fields.split_ascii_whitespace();
+    if matches!(fields.next()?, "Z" | "X" | "x") {
+        return None;
+    }
+    fields
+        .nth(18)?
+        .parse::<u64>()
+        .ok()
+        .filter(|value| *value != 0)
+}
+
+#[cfg(target_os = "macos")]
+fn process_matches(pid: u32, expected: u64) -> bool {
+    if pid == 0 || pid > i32::MAX as u32 || expected == 0 {
+        return false;
+    }
+    let mut info: libc::proc_bsdinfo = unsafe { std::mem::zeroed() };
+    let size = std::mem::size_of_val(&info) as i32;
+    let count = unsafe {
+        libc::proc_pidinfo(
+            pid as i32,
+            libc::PROC_PIDTBSDINFO,
+            0,
+            (&mut info as *mut libc::proc_bsdinfo).cast(),
+            size,
+        )
+    };
+    if count != size
+        || info.pbi_pid != pid
+        || info.pbi_uid != unsafe { libc::geteuid() }
+        || info.pbi_status == 5
+    {
+        return false;
+    }
+    info.pbi_start_tvsec
+        .checked_mul(1_000_000)
+        .and_then(|value| value.checked_add(info.pbi_start_tvusec))
+        == Some(expected)
+}
+
+#[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
 fn process_matches(_: u32, _: u64) -> bool {
     false
 }
@@ -454,6 +622,220 @@ fn process_matches(_: u32, _: u64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn linux_process_identity_handles_comm_delimiters_and_rejects_dead_or_missing_start() {
+        let stat = |state: &str, start: &str| {
+            format!(
+                "123 (core (worker) name)) {state} {} {start} 0",
+                vec!["0"; 18].join(" ")
+            )
+        };
+        assert_eq!(linux_process_start(&stat("S", "12345")), Some(12345));
+        assert_eq!(linux_process_start(&stat("R", "1")), Some(1));
+        for state in ["Z", "X", "x"] {
+            assert_eq!(linux_process_start(&stat(state, "12345")), None);
+        }
+        for value in [
+            "",
+            "123 (truncated) S 0",
+            "123 no-delimiter",
+            &stat("S", "0"),
+            &stat("S", "invalid"),
+        ] {
+            assert_eq!(linux_process_start(value), None);
+        }
+    }
+
+    #[test]
+    fn local_adapter_reports_its_platform_account_boundary() {
+        assert_eq!(
+            local_supported(),
+            cfg!(any(windows, target_os = "linux", target_os = "macos"))
+        );
+        let client = BridgeProxyClient {
+            data_dir: PathBuf::from("private-core"),
+            allow_control: false,
+            #[cfg(unix)]
+            directory: {
+                let path = std::env::temp_dir();
+                std::sync::Arc::new(open_unix_directory(&path.canonicalize().unwrap()).unwrap())
+            },
+        };
+        let info = client.info();
+        assert_eq!(info["platform"], std::env::consts::OS);
+        assert_eq!(info["credential_protection"], credential_protection());
+        assert_eq!(info["control_configured"], false);
+        #[cfg(windows)]
+        assert_eq!(credential_protection(), "windows-dpapi");
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        assert_eq!(credential_protection(), "unix-owner-only");
+    }
+
+    #[cfg(unix)]
+    mod unix_credentials {
+        use super::*;
+        use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
+        struct Scratch(PathBuf);
+        impl Scratch {
+            fn new() -> Self {
+                let suffix = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos();
+                let path = std::env::temp_dir().join(format!(
+                    "rlink-core-credentials-{}-{suffix}",
+                    std::process::id()
+                ));
+                std::fs::DirBuilder::new()
+                    .mode(0o700)
+                    .create(&path)
+                    .unwrap();
+                Self(path)
+            }
+            fn credential_path(&self) -> PathBuf {
+                self.0.join("control-api.protected")
+            }
+            fn write(&self, data: &[u8]) {
+                use std::io::Write;
+                let mut file = File::options()
+                    .write(true)
+                    .create_new(true)
+                    .mode(0o600)
+                    .open(self.credential_path())
+                    .unwrap();
+                file.write_all(data).unwrap();
+            }
+        }
+        impl Drop for Scratch {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+
+        #[test]
+        fn owner_only_credentials_reject_broad_permissions_symlinks_and_hardlinks() {
+            let directory = Scratch::new();
+            directory.write(b"private");
+            assert_eq!(read_unix_credentials(&directory.0).unwrap(), b"private");
+            std::fs::set_permissions(&directory.0, std::fs::Permissions::from_mode(0o755)).unwrap();
+            assert!(read_unix_credentials(&directory.0).is_err());
+            std::fs::set_permissions(&directory.0, std::fs::Permissions::from_mode(0o700)).unwrap();
+            std::fs::set_permissions(
+                directory.credential_path(),
+                std::fs::Permissions::from_mode(0o644),
+            )
+            .unwrap();
+            assert!(read_unix_credentials(&directory.0).is_err());
+            std::fs::set_permissions(
+                directory.credential_path(),
+                std::fs::Permissions::from_mode(0o600),
+            )
+            .unwrap();
+            let extra = directory.0.join("other-link");
+            std::fs::hard_link(directory.credential_path(), &extra).unwrap();
+            assert!(read_unix_credentials(&directory.0).is_err());
+            std::fs::remove_file(&extra).unwrap();
+            std::fs::rename(directory.credential_path(), &extra).unwrap();
+            std::os::unix::fs::symlink(&extra, directory.credential_path()).unwrap();
+            assert!(read_unix_credentials(&directory.0).is_err());
+            let symlink_directory = directory.0.join("alias");
+            std::os::unix::fs::symlink(&directory.0, &symlink_directory).unwrap();
+            assert!(BridgeProxyClient::connect(symlink_directory, false).is_err());
+        }
+
+        #[test]
+        fn a_granted_directory_stays_bound_to_its_inode_after_ancestor_path_replacement() {
+            use std::io::Write;
+            let scratch = Scratch::new();
+            let granted = scratch.0.join("granted");
+            std::fs::DirBuilder::new()
+                .mode(0o700)
+                .create(&granted)
+                .unwrap();
+            let write = |path: &Path, value: &[u8]| {
+                File::options()
+                    .write(true)
+                    .create_new(true)
+                    .mode(0o600)
+                    .open(path.join("control-api.protected"))
+                    .unwrap()
+                    .write_all(value)
+                    .unwrap();
+            };
+            write(&granted, b"original");
+            let directory = open_unix_directory(&granted).unwrap();
+            std::fs::rename(&granted, scratch.0.join("moved")).unwrap();
+            std::fs::DirBuilder::new()
+                .mode(0o700)
+                .create(&granted)
+                .unwrap();
+            write(&granted, b"replacement");
+            assert_eq!(
+                read_unix_credentials_from_directory(&directory).unwrap(),
+                b"original"
+            );
+            assert_eq!(read_unix_credentials(&granted).unwrap(), b"replacement");
+        }
+
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[test]
+        fn unix_credentials_bind_to_the_current_process_identity_and_refuse_stale_or_invalid_data()
+        {
+            let pid = std::process::id();
+            #[cfg(target_os = "linux")]
+            let created =
+                linux_process_start(&std::fs::read_to_string(format!("/proc/{pid}/stat")).unwrap())
+                    .unwrap();
+            #[cfg(target_os = "macos")]
+            let created = {
+                let mut info: libc::proc_bsdinfo = unsafe { std::mem::zeroed() };
+                let size = std::mem::size_of_val(&info) as i32;
+                assert_eq!(
+                    unsafe {
+                        libc::proc_pidinfo(
+                            pid as i32,
+                            libc::PROC_PIDTBSDINFO,
+                            0,
+                            (&mut info as *mut libc::proc_bsdinfo).cast(),
+                            size,
+                        )
+                    },
+                    size
+                );
+                info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec
+            };
+            assert!(process_matches(pid, created));
+            assert!(!process_matches(pid, created + 1));
+            assert!(!process_matches(0, created));
+            assert!(!process_matches(pid, 0));
+            let directory = Scratch::new();
+            let mut payload = json!({"format":1,"read_token":"a".repeat(64),"control_token":"b".repeat(64),"port":1234,"pid":pid,"process_created":created,"active":true});
+            let write = |payload: &Value| {
+                if directory.credential_path().exists() {
+                    std::fs::remove_file(directory.credential_path()).unwrap();
+                }
+                let mut bytes = MAGIC.to_vec();
+                bytes.extend(serde_json::to_vec(payload).unwrap());
+                directory.write(&bytes);
+            };
+            write(&payload);
+            let client = BridgeProxyClient::connect(&directory.0, false).unwrap();
+            assert_eq!(client.credentials().unwrap().pid, pid);
+            for field in ["active", "process_created", "control_token", "format"] {
+                let old = payload[field].clone();
+                payload[field] = match field {
+                    "active" => json!(false),
+                    "process_created" => json!(created + 1),
+                    "control_token" => payload["read_token"].clone(),
+                    _ => json!(2),
+                };
+                write(&payload);
+                assert!(client.credentials().is_err(), "{field}");
+                payload[field] = old;
+            }
+        }
+    }
 
     fn stub(response: Vec<u8>) -> (Credentials, std::thread::JoinHandle<String>) {
         use std::io::{Read, Write};

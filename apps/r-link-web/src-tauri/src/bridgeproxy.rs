@@ -1,5 +1,7 @@
 //! Desktop composition only. The reusable adapter and its authority live in r-link-core.
-use r_link_core::bridgeproxy::{BridgeProxyClient, CoreRequest, CoreResponse};
+use r_link_core::bridgeproxy::{
+    credential_protection, local_supported, BridgeProxyClient, CoreRequest, CoreResponse,
+};
 use serde_json::{json, Value};
 use std::sync::{
     atomic::{AtomicU64, Ordering},
@@ -56,7 +58,8 @@ pub fn bridgeproxy_adapter_info(
         .map(BridgeProxyClient::info)
         .unwrap_or_else(|| {
             json!({
-                "configured":false,"control_configured":false,"supported":cfg!(windows),
+                "configured":false,"control_configured":false,"supported":local_supported(),
+                "platform":std::env::consts::OS,"credential_protection":credential_protection(),
                 "target":"local","endpoint_scope":"desktop-loopback","api_version":"v1"
             })
         }))
