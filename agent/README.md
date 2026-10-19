@@ -29,7 +29,13 @@ rlink-agent run --udp-port 51822
 rlink-agent status --json
 ```
 
-The default data and hole-punch port is UDP 51822. The service needs
+The default data and hole-punch port is UDP 51822.
+The Windows installer preserves an existing usable port or automatically
+chooses a verified alternative when Windows reserves or another process owns
+the default. It checks system exclusions and an exclusive UDP bind, then uses
+the same selected port in the service command and its firewall rule. It never
+removes system-reserved ranges or replaces the enrolled device identity.
+The service needs
 administrator/root access to create its own adapter and
 route. It only installs an assigned private virtual subnet route. It does not
 change global DNS, default routes, existing mesh clients, or LAN routing.

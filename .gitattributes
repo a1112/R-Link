@@ -1,0 +1,5 @@
+# Keep recorded upstream SHA-256 snapshots byte-identical on Windows checkouts.
+/R-Link-Server/interop_bridge/_vendor/r_sdk_interop/__init__.py text eol=lf
+/R-Link-Server/interop_bridge/_vendor/r_sdk_interop/schema.json text eol=lf
+/R-Link-Server/interop_bridge/UPSTREAM.md text eol=lf
+/R-Link-Server/interop_bridge/MIGRATION.md text eol=lf

@@ -4,6 +4,8 @@
 
 **R-Link-Web 已整合到本仓库的 `apps/r-link-web/`，后续开发统一在 R-Link 进行。** 原始快照与增量核对见 [迁移记录](docs/repository-consolidation/R-Link-Web/README.md)。
 
+产品采用独立产品、统一入口、独立发版的方式推进：R-Link 负责设备与运维管理，Fabric 负责设备组网，BridgeProxy 负责代理出口共享与本机流量接管。职责、接口边界及后续集成路线见[产品分工](docs/product-boundaries-20261019.md)。
+
 ## 开发
 
 需要 Node.js 22+、npm、Python 3.12+；桌面构建另需 Rust 和对应系统的 Tauri 构建工具。

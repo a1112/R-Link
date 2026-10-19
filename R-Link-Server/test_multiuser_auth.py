@@ -325,6 +325,61 @@ def test_expired_desktop_exchange_is_rejected(oidc):
         'flow_id': data['flow_id'], 'poll_secret': data['poll_secret']}).status_code == 400
 
 
+@pytest.mark.parametrize('origin', ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost'])
+def test_configured_tauri_cross_site_start_and_exchange(oidc, provider, monkeypatch, origin):
+    monkeypatch.setenv('R_LINK_CORS_ORIGINS', origin)
+    headers = {'Origin': origin, 'Sec-Fetch-Site': 'cross-site', 'Referer': origin + '/'}
+    started = oidc.post('/r-link/api/auth/desktop/start', headers=headers, json={})
+    assert started.status_code == 200
+    flow = started.json()
+    body = {'flow_id': flow['flow_id'], 'poll_secret': flow['poll_secret']}
+    assert oidc.post('/r-link/api/auth/desktop/exchange', headers=headers, json=body).status_code == 202
+    authorization = oidc.get(flow['login_url'], follow_redirects=False)
+    state = parse_qs(urlsplit(authorization.headers['location']).query)['state'][0]
+    assert oidc.get('/r-link/api/auth/callback', params={'state': state, 'code': 'x'}).status_code == 200
+    exchanged = oidc.post('/r-link/api/auth/desktop/exchange', headers=headers, json=body)
+    assert exchanged.status_code == 200 and exchanged.json()['user']['role'] == 'pending'
+    assert oidc.post('/r-link/api/auth/desktop/exchange', headers=headers, json=body).status_code == 400
+    assert identity.read_session(exchanged.json()['token'])['kind'] == 'desktop'
+
+
+@pytest.mark.parametrize('origin', [None, 'null', 'https://evil.example', 'http://tauri.localhost.evil.example',
+                                  'tauri://localhost.evil.example', 'https://app.example'])
+def test_cross_site_desktop_exception_rejects_other_origins(oidc, origin):
+    headers = {'Sec-Fetch-Site': 'cross-site', 'Referer': 'tauri://localhost/'}
+    if origin is not None:
+        headers['Origin'] = origin
+    assert oidc.post('/r-link/api/auth/desktop/start', headers=headers, json={}).status_code == 403
+    assert oidc.post('/r-link/api/auth/desktop/exchange', headers=headers, json={
+        'flow_id': 'a' * 32, 'poll_secret': 'b' * 32}).status_code == 403
+
+
+def test_tauri_cross_site_requires_explicit_configuration_and_does_not_relax_browser_auth(oidc, monkeypatch):
+    monkeypatch.setenv('R_LINK_CORS_ORIGINS', 'https://app.example')
+    headers = {'Origin': 'tauri://localhost', 'Sec-Fetch-Site': 'cross-site'}
+    assert oidc.post('/r-link/api/auth/desktop/start', headers=headers, json={}).status_code == 403
+    monkeypatch.setenv('R_LINK_CORS_ORIGINS', 'tauri://localhost')
+    assert oidc.get('/r-link/api/auth/login', headers=headers).status_code == 403
+    _, current = user_session(oidc)
+    cookie_headers = dict(mutation_headers(current), **{'Origin': 'tauri://localhost', 'Sec-Fetch-Site': 'cross-site'})
+    assert oidc.post('/r-link/api/auth/ws-token', headers=cookie_headers).status_code == 403
+
+
+def test_desktop_poll_secret_cannot_be_replaced_by_master_bearer(oidc, provider, monkeypatch):
+    monkeypatch.setenv('R_LINK_API_TOKEN', 'controlled-test-service-key')
+    headers = {'Origin': 'tauri://localhost', 'Sec-Fetch-Site': 'cross-site',
+               'Authorization': 'Bearer controlled-test-service-key'}
+    flow = oidc.post('/r-link/api/auth/desktop/start', headers=headers, json={}).json()
+    assert oidc.post('/r-link/api/auth/desktop/exchange', headers=headers, json={
+        'flow_id': flow['flow_id'], 'poll_secret': 'wrong' * 10}).status_code == 400
+    assert oidc.get('/r-link/api/auth/session', headers={'Authorization': 'Bearer controlled-test-service-key'}).json()['authenticated'] is False
+
+
+def test_null_desktop_origin_is_rejected_even_if_configured(oidc, monkeypatch):
+    monkeypatch.setenv('R_LINK_CORS_ORIGINS', 'null,tauri://localhost')
+    assert oidc.post('/r-link/api/auth/desktop/start', headers={'Origin': 'null'}, json={}).status_code == 403
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('wrong', ['iss', 'aud', 'aud-with-azp', 'nonce', 'exp', 'signature'])
 async def test_authlib_rejects_invalid_signed_id_tokens(oidc, monkeypatch, wrong):

@@ -84,9 +84,15 @@ def oidc_enabled():
 def trusted_desktop_origin(request: Request):
     origin = request.headers.get('origin')
     public_origin = '/'.join(identity.settings()['public_url'].split('/')[:3])
-    if origin and origin not in set(allowed_origins()) | {public_origin}:
+    configured_origins = set(allowed_origins())
+    if origin == 'null' or (origin and origin not in configured_origins | {public_origin}):
         raise HTTPException(403, 'Untrusted desktop origin')
-    if request.headers.get('sec-fetch-site') == 'cross-site':
+    # Native WebViews classify localhost-scheme requests to HTTPS as cross-site.
+    # Only desktop start/exchange may accept exact, explicitly configured Tauri
+    # origins here; ordinary browser login and cookie CSRF remain unchanged.
+    configured_tauri_origin = (origin in {'tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost'}
+                               and origin in configured_origins)
+    if request.headers.get('sec-fetch-site') == 'cross-site' and not configured_tauri_origin:
         raise HTTPException(403, 'Cross-site desktop request rejected')
 
 

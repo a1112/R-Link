@@ -109,16 +109,6 @@ it('represents the actual client separately with an unverified mesh state and ma
   expect(filterNodes(nodes, { query: 'lcx_ace', status: 'all', source: 'client', type: 'computer' })).toHaveLength(1);
 });
 
-it('represents the actual client separately with an unverified mesh state and management relation', () => {
-  const nodes = makeNodes([], null, { hostname: 'lcx_ace', platform: 'windows', runtime: 'desktop' });
-  expect(nodes[0].name).toBe('本电脑');
-  expect(nodes[0].subtitle).toBe('lcx_ace');
-  expect(nodes[0].status).toBe('unknown');
-  expect(nodes[0].device).toBeUndefined();
-  expect(layoutNodes(nodes).edges[0].relation).toBe('client');
-  expect(filterNodes(nodes, { query: 'lcx_ace', status: 'all', source: 'client', type: 'computer' })).toHaveLength(1);
-});
-
 it('never infers device presence from a reachable port or an online gateway', () => {
   const nodes = makeNodes([device, { ...device, id: 'child', source: 'gateway', gateway_status: 'online' }, { ...device, id: 'revoked', connection_status: 'revoked' }], null);
   expect(nodes.map(node => node.status)).toEqual(['unknown', 'unknown', 'unknown']);

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
 
 	"github.com/a1112/R-Link/agent/internal/agent"
@@ -72,11 +70,10 @@ func run(parent context.Context) error {
 			defer file.Close()
 			source = file
 		}
-		scanner := bufio.NewScanner(io.LimitReader(source, 1025))
-		if !scanner.Scan() {
-			return errors.New("missing enrollment token")
+		token, e := agent.ReadEnrollmentToken(source)
+		if e != nil {
+			return e
 		}
-		token := strings.TrimSpace(scanner.Text())
 		i, e := agent.Enroll(ctx, *server, *name, token)
 		token = ""
 		if e != nil {

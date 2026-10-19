@@ -5,6 +5,48 @@ param(
     [Parameter(Mandatory=$true)][string]$PythonPath
 )
 $ErrorActionPreference = 'Stop'
+function ConvertTo-RLinkUdpExcludedRanges([string[]]$Lines) {
+    foreach ($taskLine in $Lines) {
+        $taskRangeMatch = [regex]::Match($taskLine, '^\s*(?<start>[0-9]+)\s+(?<end>[0-9]+)(?:\s+\*)?\s*$')
+        if (-not $taskRangeMatch.Success) { continue }
+        $taskRangeStart = [int]$taskRangeMatch.Groups['start'].Value
+        $taskRangeEnd = [int]$taskRangeMatch.Groups['end'].Value
+        if ($taskRangeStart -lt 0 -or $taskRangeEnd -gt 65535 -or $taskRangeStart -gt $taskRangeEnd) { throw 'Invalid Windows UDP exclusion range.' }
+        [pscustomobject]@{Start=$taskRangeStart; End=$taskRangeEnd}
+    }
+}
+function Test-RLinkUdpPortAvailable([int]$Port) {
+    $taskSocket = New-Object Net.Sockets.Socket([Net.Sockets.AddressFamily]::InterNetwork, [Net.Sockets.SocketType]::Dgram, [Net.Sockets.ProtocolType]::Udp)
+    try {
+        $taskSocket.ExclusiveAddressUse = $true
+        $taskSocket.Bind((New-Object Net.IPEndPoint([Net.IPAddress]::Any, $Port)))
+        return $true
+    } catch [Net.Sockets.SocketException] {
+        return $false
+    } finally { $taskSocket.Dispose() }
+}
+function Select-RLinkUdpPort([object[]]$ExcludedRanges, [int]$ExistingPort = 0) {
+    $taskPorts = New-Object 'Collections.Generic.List[int]'
+    if ($ExistingPort -gt 0 -and $ExistingPort -le 65535) { $taskPorts.Add($ExistingPort) }
+    foreach ($taskPort in @(51822,41822,41823,41824,41922,42922,51922,52922,53922,54922,55922,56922,57922,58922,59922,60922,61922,62922,63922,64922)) {
+        if (-not $taskPorts.Contains($taskPort)) { $taskPorts.Add($taskPort) }
+    }
+    foreach ($taskPort in $taskPorts) {
+        $taskExcluded = $false
+        foreach ($taskRange in $ExcludedRanges) {
+            if ($taskPort -ge $taskRange.Start -and $taskPort -le $taskRange.End) { $taskExcluded = $true; break }
+        }
+        if (-not $taskExcluded -and (Test-RLinkUdpPortAvailable $taskPort)) { return $taskPort }
+    }
+    throw 'No available R-Link UDP port was found outside Windows exclusions. Existing device identity was preserved.'
+}
+function Get-RLinkServiceUdpPort([string]$Command, [string]$Prefix) {
+    $taskServiceMatch = [regex]::Match($Command.Trim(), '^' + [regex]::Escape($Prefix) + '(?<port>[0-9]{1,5})$', [Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if (-not $taskServiceMatch.Success) { throw 'An unrelated service or network configuration was preserved.' }
+    $taskServicePort = [int]$taskServiceMatch.Groups['port'].Value
+    if ($taskServicePort -lt 1 -or $taskServicePort -gt 65535) { throw 'An unrelated service or network configuration was preserved.' }
+    return $taskServicePort
+}
 function Set-RLinkAcl([string]$Path, [bool]$Directory, [bool]$Public) {
     if ($Directory) { $taskAcl = New-Object Security.AccessControl.DirectorySecurity }
     else { $taskAcl = New-Object Security.AccessControl.FileSecurity }
@@ -41,9 +83,10 @@ try {
     $taskStateDirectory = Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'R-Link\Agent'
     $taskExe = Join-Path $taskBinaryDirectory 'rlink-agent.exe'
     $taskConfig = Join-Path $taskStateDirectory 'config.json'
-    $taskServiceCommand = '"' + $taskExe + '" run --config "' + $taskConfig + '" --udp-port 51822'
+    $taskServicePrefix = '"' + $taskExe + '" run --config "' + $taskConfig + '" --udp-port '
     $taskExistingService = Get-CimInstance Win32_Service -Filter "Name='RLinkFabric'"
-    if ($taskExistingService -and $taskExistingService.PathName.Trim() -ine $taskServiceCommand) { throw 'An unrelated service or network configuration was preserved.' }
+    $taskExistingPort = 0
+    if ($taskExistingService) { $taskExistingPort = Get-RLinkServiceUdpPort $taskExistingService.PathName $taskServicePrefix }
     if (Test-Path -LiteralPath $taskConfig) {
         $taskIdentity = Get-Content -LiteralPath $taskConfig -Raw | ConvertFrom-Json
         if ($taskIdentity.control_url -ne 'https://175.178.16.90/r-link') { throw 'Existing network identity was preserved.' }
@@ -54,10 +97,17 @@ try {
         New-Item -ItemType Directory -Path $taskDirectory -Force | Out-Null
         Set-RLinkAcl $taskDirectory $true $true
     }
+    $taskNetsh = Join-Path $env:SystemRoot 'System32\netsh.exe'
+    $taskExclusionOutput = & $taskNetsh interface ipv4 show excludedportrange protocol=udp
+    if ($LASTEXITCODE -ne 0) { throw 'Windows UDP exclusion inspection failed. Existing device identity was preserved.' }
+    $taskExcludedRanges = @(ConvertTo-RLinkUdpExcludedRanges $taskExclusionOutput)
     if ($taskExistingService -and $taskExistingService.State -eq 'Running') {
         Stop-Service -Name 'RLinkFabric'
         (Get-Service -Name 'RLinkFabric').WaitForStatus('Stopped', [TimeSpan]::FromSeconds(20))
     }
+    $taskUdpPort = Select-RLinkUdpPort $taskExcludedRanges $taskExistingPort
+    $taskServiceCommand = $taskServicePrefix + $taskUdpPort
+    Write-Output ('R-Link encrypted traffic will use UDP port ' + $taskUdpPort + '.')
     Copy-Item -LiteralPath (Join-Path $taskPayload 'rlink-agent.exe') -Destination $taskExe -Force
     Copy-Item -LiteralPath (Join-Path $taskPayload 'wintun.dll') -Destination (Join-Path $taskBinaryDirectory 'wintun.dll') -Force
     Set-RLinkAcl $taskExe $false $true
@@ -71,8 +121,41 @@ try {
         $taskPlain = $null
         if ($taskEnrollment.device -ine $env:COMPUTERNAME -or $taskEnrollment.control_url -ne 'https://175.178.16.90/r-link') { throw 'Enrollment belongs to another device or service.' }
         try {
-            $taskEnrollment.enrollment_token | & $taskExe enroll --server $taskEnrollment.control_url --name $taskEnrollment.device --token-stdin --config $taskConfig
-            if ($LASTEXITCODE -ne 0) { throw 'Device enrollment failed.' }
+            $taskStart = New-Object Diagnostics.ProcessStartInfo
+            $taskStart.FileName = $taskExe
+            $taskStart.Arguments = 'enroll --server "' + $taskEnrollment.control_url + '" --name "' + $env:COMPUTERNAME + '" --token-stdin --config "' + $taskConfig + '"'
+            $taskStart.UseShellExecute = $false
+            $taskStart.CreateNoWindow = $true
+            $taskStart.RedirectStandardInput = $true
+            $taskStart.RedirectStandardOutput = $true
+            $taskStart.RedirectStandardError = $true
+            $taskEnrollmentProcess = New-Object Diagnostics.Process
+            $taskEnrollmentProcess.StartInfo = $taskStart
+            try {
+                $taskEnrollmentProcess.Start() | Out-Null
+                $taskOutputTask = $taskEnrollmentProcess.StandardOutput.ReadToEndAsync()
+                $taskErrorTask = $taskEnrollmentProcess.StandardError.ReadToEndAsync()
+                $taskEnrollmentProcess.StandardInput.WriteLine($taskEnrollment.enrollment_token)
+                $taskEnrollmentProcess.StandardInput.Close()
+                if (-not $taskEnrollmentProcess.WaitForExit(30000)) { $taskEnrollmentProcess.Kill(); throw 'Device enrollment process timed out.' }
+                $taskEnrollmentOutput = $taskOutputTask.Result
+                $taskEnrollmentError = $taskErrorTask.Result.Trim()
+                if ($taskEnrollmentProcess.ExitCode -ne 0) {
+                    $taskSafeEnrollmentError = 'Enrollment command failed.'
+                    if ($taskEnrollmentError -match '^(control connection failed|control HTTP [0-9]{3}|invalid control JSON|invalid control response size|cannot persist private agent identity|already enrolled; existing identity preserved)$') { $taskSafeEnrollmentError = $taskEnrollmentError }
+                    if ($taskEnrollmentError.StartsWith('control connection failed:')) { $taskSafeEnrollmentError = 'control connection failed' }
+                    $taskSafeDetail = $taskEnrollmentError.Replace($taskEnrollment.enrollment_token, '[redacted]')
+                    if ($taskSafeDetail.Length -gt 2048) { $taskSafeDetail = $taskSafeDetail.Substring(0, 2048) }
+                    $taskPrivateDiagnostic = Join-Path $taskStateDirectory 'enrollment-error-private.json'
+                    if (-not (Test-Path -LiteralPath $taskPrivateDiagnostic)) { New-Item -ItemType File -Path $taskPrivateDiagnostic | Out-Null }
+                    Set-RLinkAcl $taskPrivateDiagnostic $false $false
+                    [ordered]@{stage='enrollment';exitCode=$taskEnrollmentProcess.ExitCode;detail=$taskSafeDetail;recordedAt=(Get-Date).ToString('o')}|ConvertTo-Json|Set-Content -LiteralPath $taskPrivateDiagnostic -Encoding UTF8
+                    [ordered]@{stage='enrollment';exitCode=$taskEnrollmentProcess.ExitCode;error=$taskSafeEnrollmentError;recordedAt=(Get-Date).ToString('o')}|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $taskStateDirectory 'enrollment-result.json') -Encoding UTF8
+                    Set-RLinkAcl (Join-Path $taskStateDirectory 'enrollment-result.json') $false $true
+                    throw ('Device enrollment failed: ' + $taskSafeEnrollmentError)
+                }
+                Write-Output 'Device enrollment saved; starting the real network service.'
+            } finally { $taskEnrollmentProcess.Dispose() }
         } finally { $taskEnrollment = $null }
     }
     Set-RLinkAcl $taskConfig $false $false
@@ -87,7 +170,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Agent service recovery configuration failed.' }
     $taskRule = Get-NetFirewallRule -Name 'RLinkFabric-UDP' -ErrorAction SilentlyContinue
     if ($taskRule) { Remove-NetFirewallRule -Name 'RLinkFabric-UDP' }
-    New-NetFirewallRule -Name 'RLinkFabric-UDP' -DisplayName 'R-Link encrypted peer traffic' -Direction Inbound -Action Allow -Program $taskExe -Protocol UDP -LocalPort 51822 | Out-Null
+    New-NetFirewallRule -Name 'RLinkFabric-UDP' -DisplayName 'R-Link encrypted peer traffic' -Direction Inbound -Action Allow -Program $taskExe -Protocol UDP -LocalPort $taskUdpPort | Out-Null
     Start-Service -Name 'RLinkFabric'
     $taskReady = $false
     for ($taskAttempt = 0; $taskAttempt -lt 180; $taskAttempt++) {
@@ -100,7 +183,7 @@ try {
         } finally { $ErrorActionPreference = $taskPreviousPreference }
         if ($taskStatusExit -eq 0 -and $taskRaw) {
             $taskStatus = $taskRaw | ConvertFrom-Json
-            if ($taskStatus.mode -eq 'vpn' -and $taskStatus.control.connected -and $taskStatus.tun.ready) { $taskReady = $true; break }
+            if ($taskStatus.mode -eq 'vpn' -and $taskStatus.control.connected -and $taskStatus.tun.ready -and $taskStatus.listen_port -eq $taskUdpPort) { $taskReady = $true; break }
         }
         Start-Sleep -Seconds 1
     }

@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { accountsApi } from '../api/accounts';
+import { accountsApi, DesktopAuthNetworkError } from '../api/accounts';
 import { expireAccount, getAccountState, resetAccount, serviceEndpoint, setDesktopSessionToken, subscribeAccount, updateAccount } from '../api/account-access';
 import { isTauriRuntime } from '../utils/tauriWindow';
 
 export const useAccountState = () => useSyncExternalStore(subscribeAccount, getAccountState);
+
+function waitForNextExchange(signal: AbortSignal, deadline: number) {
+  return new Promise<void>((resolve, reject) => {
+    const stop = () => { clearTimeout(timer); signal.removeEventListener('abort', stop); reject(new DOMException('已取消登录', 'AbortError')); };
+    const timer = setTimeout(() => { signal.removeEventListener('abort', stop); resolve(); }, Math.max(0, Math.min(2000, deadline - Date.now())));
+    signal.addEventListener('abort', stop, { once: true });
+    if (signal.aborted) stop();
+  });
+}
 
 export function useAccount() {
   const account = useAccountState();
@@ -79,8 +88,20 @@ export function useAccount() {
     if (controller.signal.aborted) return;
     await invoke('open_auth_login', { url: url.toString() });
     const deadline = Date.now() + Math.min(flow.expires_in, 300) * 1000;
+    let consecutiveNetworkFailures = 0;
     while (!controller.signal.aborted && Date.now() < deadline) {
-      const response = await accountsApi.desktopExchange(flow.flow_id, flow.poll_secret, controller.signal);
+      let response: Awaited<ReturnType<typeof accountsApi.desktopExchange>>;
+      try { response = await accountsApi.desktopExchange(flow.flow_id, flow.poll_secret, controller.signal); }
+      catch (error) {
+        if (controller.signal.aborted) throw new DOMException('已取消登录', 'AbortError');
+        // Only the same exchange proof is retried. A received HTTP response or
+        // failed body may have consumed the one-time flow and is never retried.
+        if (error instanceof DesktopAuthNetworkError && error.phase === 'fetch' && ++consecutiveNetworkFailures < 3 && Date.now() < deadline) {
+          await waitForNextExchange(controller.signal, deadline);
+          continue;
+        }
+        throw error;
+      }
       if (response.status === 200 && typeof response.value?.token === 'string' && response.value.token) {
         if (controller.signal.aborted) return;
         setDesktopSessionToken(response.value.token);
@@ -88,12 +109,8 @@ export function useAccount() {
         return;
       }
       if (response.status !== 202 || !response.value?.pending) throw new Error('桌面登录交换响应无效');
-      await new Promise<void>((resolve, reject) => {
-        const stop = () => { clearTimeout(timer); reject(new DOMException('已取消登录', 'AbortError')); };
-        const timer = setTimeout(() => { controller.signal.removeEventListener('abort', stop); resolve(); }, 2000);
-        controller.signal.addEventListener('abort', stop, { once: true });
-        if (controller.signal.aborted) stop();
-      });
+      consecutiveNetworkFailures = 0;
+      await waitForNextExchange(controller.signal, deadline);
     }
     if (!controller.signal.aborted) throw new Error('登录已过期，请重新登录');
   }, [refresh]);

@@ -1,12 +1,12 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { invoke } from '@tauri-apps/api/core';
-import { accountsApi } from '../api/accounts';
+import { accountsApi, DesktopAuthNetworkError } from '../api/accounts';
 import { requestAccountAccess, resetAccount, serviceEndpoint, type AccountUser } from '../api/account-access';
 import { setServiceUrl } from '../api/service-url';
 import { useAccount } from './useAccount';
 
-vi.mock('../api/accounts', () => ({ accountsApi: { config: vi.fn(), session: vi.fn(), logout: vi.fn(), desktopStart: vi.fn(), desktopExchange: vi.fn() } }));
+vi.mock('../api/accounts', async () => ({ ...await vi.importActual('../api/accounts'), accountsApi: { config: vi.fn(), session: vi.fn(), logout: vi.fn(), desktopStart: vi.fn(), desktopExchange: vi.fn() } }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 const user: AccountUser = { id: 'desktop-member', issuer: 'https://auth.example', subject: 'sub', display_name: 'Desktop Member', email: null, role: 'operator', disabled: false };
 
@@ -18,7 +18,7 @@ beforeEach(() => {
   vi.mocked(invoke).mockResolvedValue(undefined);
   Object.defineProperty(window, '__TAURI_INTERNALS__', { configurable: true, value: {} });
 });
-afterEach(() => { cleanup(); resetAccount(); localStorage.clear(); sessionStorage.clear(); delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__; });
+afterEach(() => { cleanup(); resetAccount(); localStorage.clear(); sessionStorage.clear(); delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__; vi.useRealTimers(); });
 
 it('opens the current service login in the system browser and exchanges only an in-memory session', async () => {
   setServiceUrl('https://175.178.16.90/r-link');
@@ -69,4 +69,52 @@ it('cancels a delayed desktop start before it can open the system browser', asyn
   });
   expect(invoke).not.toHaveBeenCalled(); expect(accountsApi.desktopExchange).not.toHaveBeenCalled();
   expect(requestAccountAccess().token).toBe('');
+});
+
+async function pendingDesktop() {
+  vi.useFakeTimers(); setServiceUrl('https://175.178.16.90/r-link');
+  vi.mocked(accountsApi.desktopStart).mockResolvedValue({ login_url: serviceEndpoint('/api/auth/desktop/login?flow_id=flow-retry-123456789012345'), flow_id: 'flow-retry-123456789012345', poll_secret: 'private-retry-proof', expires_in: 300 });
+  const hook = renderHook(useAccount);
+  await act(async () => { await hook.result.current.refresh(); });
+  return hook;
+}
+
+it('retries only the same exchange proof and resets the consecutive failure count after pending', async () => {
+  const { result } = await pendingDesktop();
+  const transient = new DesktopAuthNetworkError('safe network failure', 'fetch');
+  vi.mocked(accountsApi.desktopExchange).mockRejectedValueOnce(transient).mockRejectedValueOnce(transient)
+    .mockResolvedValueOnce({ status: 202, value: { pending: true } }).mockRejectedValueOnce(transient).mockRejectedValueOnce(transient)
+    .mockResolvedValueOnce({ status: 200, value: { token: 'new-app-session', user } });
+  vi.mocked(accountsApi.session).mockResolvedValue({ mode: 'oidc', authenticated: true, user, csrf_token: null, expires_at: null, session_context: 'new-context' });
+  let login!: Promise<void>; act(() => { login = result.current.beginLogin(); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(10000); await login; });
+  expect(accountsApi.desktopStart).toHaveBeenCalledTimes(1); expect(accountsApi.desktopExchange).toHaveBeenCalledTimes(6);
+  for (const [flow, proof] of vi.mocked(accountsApi.desktopExchange).mock.calls) { expect(flow).toBe('flow-retry-123456789012345'); expect(proof).toBe('private-retry-proof'); }
+  expect(requestAccountAccess().token).toBe('new-app-session');
+});
+
+it('stops after three consecutive pre-response failures without starting another flow', async () => {
+  const { result } = await pendingDesktop();
+  vi.mocked(accountsApi.desktopExchange).mockRejectedValue(new DesktopAuthNetworkError('safe network failure', 'fetch'));
+  let failure: unknown; let login!: Promise<void>;
+  act(() => { login = result.current.beginLogin().catch(error => { failure = error; }); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(4000); await login; });
+  expect(failure).toBeInstanceOf(DesktopAuthNetworkError); expect(accountsApi.desktopExchange).toHaveBeenCalledTimes(3); expect(accountsApi.desktopStart).toHaveBeenCalledTimes(1);
+});
+
+it.each([new Error('HTTP 403'), new DesktopAuthNetworkError('received body failure', 'response_json')])('never retries a server rejection or a received response body error %#', async error => {
+  const { result } = await pendingDesktop(); vi.mocked(accountsApi.desktopExchange).mockRejectedValue(error);
+  await act(async () => { await expect(result.current.beginLogin()).rejects.toBe(error); });
+  expect(accountsApi.desktopExchange).toHaveBeenCalledTimes(1); expect(accountsApi.desktopStart).toHaveBeenCalledTimes(1);
+});
+
+it('cancels exchange backoff without another request', async () => {
+  const { result } = await pendingDesktop();
+  vi.mocked(accountsApi.desktopExchange).mockRejectedValue(new DesktopAuthNetworkError('safe network failure', 'fetch'));
+  let failure: unknown; let login!: Promise<void>;
+  act(() => { login = result.current.beginLogin().catch(error => { failure = error; }); });
+  await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+  act(() => result.current.cancelLogin());
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); await login; });
+  expect(failure).toMatchObject({ name: 'AbortError' }); expect(accountsApi.desktopExchange).toHaveBeenCalledTimes(1);
 });
