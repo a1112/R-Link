@@ -80,7 +80,16 @@ it('uploads selected bytes and downloads a blob through authenticated R-Link end
   expect(saveBlob).toHaveBeenCalledTimes(1);
   const [downloaded] = vi.mocked(saveBlob).mock.calls[0];
   expect(Object.prototype.toString.call(downloaded)).toBe('[object Blob]');
-  expect(await downloaded.text()).toBe('hello');
+  // jsdom 26 exposes Blob without text(); keep the byte-content assertion in
+  // both DOM and native Blob environments.
+  const contents = typeof downloaded.text === 'function' ? await downloaded.text()
+    : await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(downloaded);
+    });
+  expect(contents).toBe('hello');
   const download = fetchMock.mock.calls.find(([url]) => String(url).includes('/download'))!;
   expect(new Headers(download[1]?.headers).get('Authorization')).toBe('Bearer operator-key');
 });
