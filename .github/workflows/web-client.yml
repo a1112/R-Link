@@ -60,3 +60,16 @@ jobs:
       - run: npm run build
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib --features custom-protocol
       - run: cargo build --manifest-path src-tauri/Cargo.toml --locked --features custom-protocol
+
+  qos-kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y iproute2 iperf3
+      - run: python -m venv .venv
+      - run: .venv/bin/python -m pip install -r R-Link-Server/requirements-test.txt
+      - name: Verify real bidirectional shaping in disposable namespaces
+        run: sudo env R_LINK_RUN_QOS_INTEGRATION=1 .venv/bin/python -m pytest R-Link-Server/test_qos_integration.py -q -s

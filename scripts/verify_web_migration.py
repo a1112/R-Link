@@ -26,7 +26,13 @@ def verify_entries(entries):
         expected = entry.get('source_git_blob')
         if entry.get('disposition') == 'redacted_local_configuration':
             expected = entry['target_git_blob']
-        assert tracked[preserved] == expected, preserved
+        preserved_path = root / preserved
+        assert preserved_path.is_file(), preserved
+        if preserved in tracked:
+            assert tracked[preserved] == expected, preserved
+        # Newly created preservation archives may be intentionally unstaged.
+        # Their bytes are still checked below; once tracked, the index blob is
+        # checked as well so an existing archive cannot silently drift.
         # Detect unstaged edits too, using Git's line-ending normalization.
         actual = subprocess.check_output(['git', '-C', str(root), 'hash-object', '--path=' + preserved, preserved]).decode().strip()
         assert actual == expected, preserved

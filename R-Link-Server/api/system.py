@@ -113,6 +113,11 @@ def _format_uptime(seconds: float) -> str:
         return f"{minutes}m"
 
 
+def _interface_property(stats, key):
+    value = getattr(stats, key, None)
+    return value if isinstance(value, (int, float)) and value > 0 else None
+
+
 @router.get("/network")
 def get_network():
     """Interface counters on the managed server, never invented device/tunnel totals."""
@@ -125,7 +130,11 @@ def get_network():
             {"name": name, "is_up": stats[name].isup if name in stats else False,
              "addresses": [address.address for address in addresses.get(name, [])
                            if address.family in (socket.AF_INET, socket.AF_INET6)],
-             "bytes_sent": counter.bytes_sent, "bytes_recv": counter.bytes_recv}
+             "bytes_sent": counter.bytes_sent, "bytes_recv": counter.bytes_recv,
+             **{key: getattr(counter, key, None) for key in
+                ("packets_sent", "packets_recv", "errin", "errout", "dropin", "dropout")},
+             "link_speed_mbps": _interface_property(stats.get(name), "speed"),
+             "mtu": _interface_property(stats.get(name), "mtu")}
             for name, counter in counters.items()
         ]
     }

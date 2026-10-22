@@ -3,6 +3,9 @@
 R-Link 插件化管理平台的后端服务。
 
 现已包含设备清单、共享文件、SSH、FRP 隧道、持久下载队列、域名绑定、Cloudflare DNS、Caddy HTTPS 和 NetBird 组网管理接口。组网控制面及各设备 Agent 由 NetBird 提供，需另行部署和配置服务用户 PAT。
+Clash/Mihomo 控制器及独立内核的配置、节点、连接和代理集合管理见 [Clash 集成说明](../docs/clash-integration-20261011.md)。
+服务端网卡健康计数和 Clash 流量采样接口见[网络流量管理](../docs/traffic-management-20261011.md)。
+设备双向限速、保障带宽和优先级的执行环境与接口见[Linux 网关设备 QoS](../docs/device-qos-20261011.md)。
 新增模块的架构、完整接口、环境变量、部署与验证见[服务端实现与部署](../docs/server-implementation-20260922.md)。
 单机单管理员运行，同一数据目录仅支持一个 worker；保留旧客户端接口兼容。
 

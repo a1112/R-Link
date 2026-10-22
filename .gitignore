@@ -13,6 +13,8 @@ binaries/
 *.conf
 *.ini
 !*.example
+!deploy/nginx.conf
+!deploy/nginx.qos.conf
 !sunshine/conf/examples/*
 !netbird/client/firewall/rules/examples/*
 

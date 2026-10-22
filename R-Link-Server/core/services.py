@@ -4,6 +4,8 @@ from core.managed_service import executable, recover_processes
 from core.downloads import DownloadManager
 from core.tunnels import TunnelManager
 from core.domains import DomainManager
+from core.clash import ClashManager
+from core.qos import QoSManager
 from fastapi import HTTPException
 
 
@@ -13,6 +15,8 @@ class Services:
         self.downloads = DownloadManager(self.state)
         self.tunnels = TunnelManager(self.state)
         self.domains = DomainManager(self.state)
+        self.clash = ClashManager(self.state)
+        self.qos = QoSManager(self.state)
         self.ready = False
         self.owns_lock = False
 
@@ -24,6 +28,8 @@ class Services:
             await self.tunnels.recover()
             await self.domains.recover()
             await self.downloads.recover()
+            await self.clash.recover()
+            await self.qos.recover()
             self.ready = True
         except BaseException:
             await self.close()
@@ -42,8 +48,11 @@ class Services:
                 try:
                     await self.domains.process.stop()
                 finally:
-                    self.owns_lock = False
-                    self.state.release()
+                    try:
+                        await self.clash.close()
+                    finally:
+                        self.owns_lock = False
+                        self.state.release()
 
     def capabilities(self):
         result = {'ready': self.ready, 'mode': 'single-operator', 'downloads': {'available': True, 'max_bytes': self.downloads.max_bytes}}
@@ -53,4 +62,6 @@ class Services:
                 result[name] = {'available': True, 'reason': None}
             except HTTPException as exc:
                 result[name] = {'available': False, 'reason': exc.detail}
+        result['clash'] = self.clash.managed_status()
+        result['qos'] = self.qos.capabilities()
         return result

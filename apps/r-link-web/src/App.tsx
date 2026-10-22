@@ -9,7 +9,6 @@ import { MainLayout } from "./components/layout";
 import { TopologyView } from "./components/TopologyView";
 import { DashboardView } from "./components/DashboardView";
 import { PluginsView } from "./components/PluginsView";
-import { NetworkMonitor } from './components/NetworkMonitor';
 
 const RemoteView = React.lazy(() => import('./components/pages/RemoteView'));
 const FRPView = React.lazy(() => import('./components/pages/FRPView'));
@@ -19,6 +18,8 @@ const StorageView = React.lazy(() => import('./components/pages/StorageView'));
 const SSHView = React.lazy(() => import('./components/pages/SSHView'));
 const ConsoleView = React.lazy(() => import('./components/pages/ConsoleView'));
 const DownloadsView = React.lazy(() => import('./components/pages/DownloadsView'));
+const ClashView = React.lazy(() => import('./components/pages/ClashView'));
+const TrafficView = React.lazy(() => import('./components/pages/TrafficView'));
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<RouteId>('dashboard');
@@ -53,7 +54,7 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <DashboardView />;
-      case 'analytics': return <NetworkMonitor />;
+      case 'analytics': return <TrafficView onConfigureClash={() => setActiveTab('clash')} />;
       case 'network': return <TopologyView onDevices={() => setActiveTab('remote')} onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} />;
       case 'mesh': return <MeshView />;
       case 'plugins': return <PluginsView />;
@@ -64,6 +65,7 @@ export default function App() {
       case 'ssh': return null;
       case 'console': return <ConsoleView />;
       case 'downloads': return <DownloadsView />;
+      case 'clash': return <ClashView />;
       default: return <div className="text-[var(--c-500)]">开发中...</div>;
     }
   };

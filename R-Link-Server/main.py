@@ -33,6 +33,8 @@ from api.mesh import router as mesh_router
 from core.services import Services
 from api.ssh import router as ssh_router
 from api.console import router as console_router, set_plugin_manager as set_console_plugin_manager
+from api.clash import router as clash_router
+from api.qos import router as qos_router
 
 # 配置日志
 # 创建必要的目录
@@ -112,6 +114,8 @@ app.include_router(system_router)
 app.include_router(sources_router)
 app.include_router(ssh_router)
 app.include_router(console_router)
+app.include_router(clash_router)
+app.include_router(qos_router)
 
 
 # 根路径

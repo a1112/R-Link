@@ -15,6 +15,7 @@ import {
   User,
   Download,
   Terminal,
+  Radio,
 } from "lucide-react";
 
 export type RouteId =
@@ -29,7 +30,8 @@ export type RouteId =
   | 'plugins'
   | 'downloads'
   | 'ssh'
-  | 'console';
+  | 'console'
+  | 'clash';
 
 export interface RouteConfig {
   id: RouteId;
@@ -50,10 +52,10 @@ export const routes: RouteConfig[] = [
   },
   {
     id: 'analytics',
-    label: '流量监控',
+    label: '流量管理',
     icon: Activity,
-    title: '服务端流量监控',
-    description: '服务端网络接口实时流量',
+    title: '网络流量管理',
+    description: '网卡速率、Clash 流量统计与连接管理',
   },
   {
     id: 'network',
@@ -89,6 +91,13 @@ export const routes: RouteConfig[] = [
     icon: Link,
     title: '域名管理',
     description: '绑定自定义域名与 SSL 证书管理',
+  },
+  {
+    id: 'clash',
+    label: 'Clash 代理',
+    icon: Radio,
+    title: 'Clash 代理',
+    description: '管理服务端 Clash 连接、代理组与流量',
   },
   {
     id: 'storage',
@@ -130,7 +139,7 @@ export const routes: RouteConfig[] = [
 
 export const routesByGroupId: Record<string, RouteId[]> = {
   overview: ['dashboard', 'analytics'],
-  network: ['network', 'mesh', 'remote', 'ssh', 'console', 'frp', 'domains'],
+  network: ['network', 'mesh', 'remote', 'ssh', 'console', 'frp', 'domains', 'clash'],
   storage: ['storage'],
   extensions: ['plugins', 'downloads'],
 };

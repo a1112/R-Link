@@ -107,11 +107,20 @@ async def test_cancelled_probe_releases_slot(tmp_path, monkeypatch):
 
 
 def test_network_snapshot_uses_actual_interface_counters(monkeypatch):
-    monkeypatch.setattr(system.psutil, 'net_io_counters', lambda **kw: {'eth0': SimpleNamespace(bytes_sent=100, bytes_recv=200)})
-    monkeypatch.setattr(system.psutil, 'net_if_stats', lambda: {'eth0': SimpleNamespace(isup=True)})
+    monkeypatch.setattr(system.psutil, 'net_io_counters', lambda **kw: {'eth0': SimpleNamespace(bytes_sent=100, bytes_recv=200, packets_sent=4, packets_recv=8, errin=1, errout=2, dropin=3, dropout=5)})
+    monkeypatch.setattr(system.psutil, 'net_if_stats', lambda: {'eth0': SimpleNamespace(isup=True, speed=1000, mtu=1500)})
     monkeypatch.setattr(system.psutil, 'net_if_addrs', lambda: {'eth0': [SimpleNamespace(family=socket.AF_INET, address='192.0.2.10')]})
     result = system.get_network()
-    assert result['interfaces'] == [{'name': 'eth0', 'is_up': True, 'addresses': ['192.0.2.10'], 'bytes_sent': 100, 'bytes_recv': 200}]
+    assert result['interfaces'] == [{'name': 'eth0', 'is_up': True, 'addresses': ['192.0.2.10'], 'bytes_sent': 100, 'bytes_recv': 200, 'packets_sent': 4, 'packets_recv': 8, 'errin': 1, 'errout': 2, 'dropin': 3, 'dropout': 5, 'link_speed_mbps': 1000, 'mtu': 1500}]
+
+
+def test_missing_interface_stats_and_unsupported_counters_remain_unknown(monkeypatch):
+    monkeypatch.setattr(system.psutil, 'net_io_counters', lambda **kw: {'utun4': SimpleNamespace(bytes_sent=1, bytes_recv=2)})
+    monkeypatch.setattr(system.psutil, 'net_if_stats', lambda: {})
+    monkeypatch.setattr(system.psutil, 'net_if_addrs', lambda: {})
+    iface = system.get_network()['interfaces'][0]
+    assert iface['is_up'] is False and iface['addresses'] == []
+    assert all(iface[key] is None for key in ('packets_sent', 'errin', 'dropout', 'link_speed_mbps', 'mtu'))
 
 
 @pytest.mark.asyncio

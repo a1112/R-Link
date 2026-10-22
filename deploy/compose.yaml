@@ -8,6 +8,7 @@ services:
       R_LINK_CORS_ORIGINS: ${R_LINK_CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
       R_LINK_FRPC_BINARY: /opt/rlink/bin/frpc
       R_LINK_CADDY_BINARY: /opt/rlink/bin/caddy
+      R_LINK_MIHOMO_BINARY: /opt/rlink/bin/mihomo
       R_LINK_FRP_TOKEN: ${R_LINK_FRP_TOKEN:-}
       R_LINK_CLOUDFLARE_TOKEN: ${R_LINK_CLOUDFLARE_TOKEN:-}
       R_LINK_ACME_STAGING: ${R_LINK_ACME_STAGING:-false}

@@ -76,10 +76,15 @@ class ManagedService:
         process = self.process
         try:
             try:
-                created = psutil.Process(process.pid).create_time()
+                running = psutil.Process(process.pid)
+                created = running.create_time()
+                # Launchers can exec another binary (notably framework Python
+                # on macOS). Recovery must compare the actual child identity.
+                running_executable = str(Path(running.exe()).resolve())
             except psutil.NoSuchProcess:
                 created = 0
-            self.state.save('process', {'pid': process.pid, 'created': created, 'executable': str(Path(args[0]).resolve()),
+                running_executable = str(Path(args[0]).resolve())
+            self.state.save('process', {'pid': process.pid, 'created': created, 'executable': running_executable,
                                         'cwd': str(self.directory)}, self.key)
         except Exception:
             # If persistence fails, do not leave an untracked child behind.
@@ -110,6 +115,18 @@ class ManagedService:
         await asyncio.sleep(0.2)
         if self.process.poll() is not None:
             raise HTTPException(502, self.status()['error'])
+        try:
+            # The initial PID record protects the launch window. Refresh the
+            # executable after a launcher has had time to exec its real binary.
+            running = psutil.Process(process.pid)
+            self.state.save('process', {'pid': process.pid, 'created': created,
+                                        'executable': str(Path(running.exe()).resolve()),
+                                        'cwd': str(self.directory)}, self.key)
+        except psutil.NoSuchProcess:
+            raise HTTPException(502, '进程在启动时已退出；请查看日志') from None
+        except Exception:
+            await self.stop()
+            raise
         return self.status()
 
     async def stop(self):
