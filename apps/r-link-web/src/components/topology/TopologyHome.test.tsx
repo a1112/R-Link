@@ -1,0 +1,170 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { devicesApi, type Device } from '../../api/devices';
+import { rfileApi, type RFileStatus } from '../../api/rfile';
+import { getClientDeviceInfo } from '../../api/client-device';
+import { systemApi } from '../../api/system';
+import { meshApi } from '../../api/mesh';
+import { fabricApi } from '../../api/fabric';
+vi.mock('../../api/fabric', async () => ({ ...await vi.importActual('../../api/fabric'), fabricApi: { status: vi.fn(), peers: vi.fn() } }));
+vi.mock('../../api/mesh', () => ({ meshApi: { status: vi.fn(), peers: vi.fn() } }));
+vi.mock('../../api/devices', () => ({ devicesApi: { list: vi.fn() } }));
+vi.mock('../../api/rfile', () => ({ rfileApi: { status: vi.fn() } }));
+vi.mock('../../api/system', () => ({ systemApi: { getInfo: vi.fn(async () => ({ hostname: 'real-server', system: 'Linux' })) } }));
+vi.mock('../../api/client-device', () => ({
+  clientDeviceFallback: () => ({ hostname: null, platform: 'unknown', runtime: 'browser' }),
+  getClientDeviceInfo: vi.fn(),
+}));
+import { TopologyView } from '../TopologyView';
+const nas: Device = { id: 'nas', name: 'Registered NAS', host: '::1', port: 22, username: 'owner', revision: 1, status: 'reachable', checked_at: '2026-10-04T00:00:00Z', latency_ms: 3, device_type: 'nas', platform: 'linux', connection_status: 'online' };
+const bridge: RFileStatus = { watch: { url: '', state: 'offline', error: null, checked_at: null }, network: { url: '', state: 'online', controller_registered: true, active_sessions: 0, error: null, checked_at: null }, files: { enabled: false, max_file_bytes: 0, reason: null }, devices: [], config_error: null };
+beforeEach(() => {
+  localStorage.clear(); vi.mocked(devicesApi.list).mockResolvedValue([nas]); vi.mocked(rfileApi.status).mockResolvedValue(bridge);
+  vi.mocked(getClientDeviceInfo).mockResolvedValue({ hostname: 'lcx_ace', platform: 'windows', runtime: 'desktop' });
+  vi.mocked(meshApi.status).mockResolvedValue({ configured: false, reachable: false, peers: 0, connected: 0, reason: 'not configured' });
+  vi.mocked(meshApi.peers).mockResolvedValue([]);
+  vi.mocked(fabricApi.status).mockResolvedValue({ schema_version: 1, provider: 'rlink', configured: false, control_url: '', peers: 0, connected: 0, config_version: 0, mode: 'direct+relay', mode_transport: 'unobserved', capabilities: { enrollment: false, revocation: false, groups: false, p2p: false, relay: false, policies: false, networks: false } });
+  vi.mocked(fabricApi.peers).mockResolvedValue([]);
+});
+afterEach(() => { cleanup(); vi.resetAllMocks(); });
+const select = async (name = 'Registered NAS') => fireEvent.click(await screen.findByRole('button', { name: `查看设备：${name}` }));
+
+it('selects real details, passes the SSH target and restores focus when closed', async () => {
+  const onSsh = vi.fn(); render(<TopologyView onSsh={onSsh} />);
+  expect(screen.queryByRole('complementary')).toBeNull(); await select();
+  const detail = screen.getByRole('complementary', { name: '设备详情' });
+  expect(within(detail).getByText('[::1]:22')).toBeTruthy();
+  expect(within(detail).getByText('端口可达 · 3 ms')).toBeTruthy();
+  fireEvent.click(within(detail).getByRole('button', { name: 'SSH 连接' }));
+  expect(onSsh).toHaveBeenCalledWith(nas);
+  fireEvent.keyDown(detail, { key: 'Escape' });
+  expect(screen.queryByRole('complementary')).toBeNull();
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: '查看设备：Registered NAS' }));
+});
+it('counts and filters presence independently of TCP and gateway state', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValue([nas, { ...nas, id: 'off', name: 'Offline PC', connection_status: 'offline' }, { ...nas, id: 'unk', name: 'Unknown phone', device_type: 'mobile', connection_status: 'unknown', gateway_status: 'online' }]);
+  render(<TopologyView />); await select();
+  expect(screen.getByRole('button', { name: '在线设备 1' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: '未知设备 2' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '离线设备 1' }));
+  expect(screen.queryByRole('button', { name: '查看设备：Registered NAS' })).toBeNull();
+  expect(screen.getByRole('button', { name: '查看设备：Offline PC' })).toBeTruthy();
+  expect(screen.queryByRole('complementary')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '全部设备 4' }));
+  fireEvent.change(screen.getByLabelText('搜索设备'), { target: { value: 'phone' } });
+  expect(screen.queryByRole('button', { name: '查看设备：Offline PC' })).toBeNull();
+  expect(screen.getByRole('button', { name: '查看设备：Unknown phone' })).toBeTruthy();
+});
+it('combines source/type filters and offers no sample devices for empty inventory', async () => {
+  vi.mocked(rfileApi.status).mockResolvedValue({ ...bridge, devices: [{ deviceId: 'p', deviceName: 'Peer phone', platform: 'android', presence: 'online' }] });
+  render(<TopologyView />); await select('Peer phone');
+  fireEvent.change(screen.getByLabelText('设备来源'), { target: { value: 'rfile' } });
+  fireEvent.change(screen.getByLabelText('设备类型'), { target: { value: 'nas' } });
+  expect(screen.getByText('没有符合筛选条件的设备')).toBeTruthy();
+  cleanup(); vi.mocked(devicesApi.list).mockResolvedValue([]); vi.mocked(rfileApi.status).mockResolvedValue(bridge);
+  render(<TopologyView />); expect(await screen.findByText('尚未发现其他设备。添加设备，或完成设备入网。')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '查看设备：本电脑' })).toBeTruthy();
+  expect(screen.queryByText('家庭 NAS')).toBeNull();
+});
+it('clears stale failed inventory but retains independently loaded R-File peers', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValueOnce([nas]).mockRejectedValue(new Error('inventory offline'));
+  vi.mocked(rfileApi.status).mockResolvedValue({ ...bridge, devices: [{ deviceId: 'peer', deviceName: 'Actual peer', presence: 'online' }] });
+  render(<TopologyView />); await select(); fireEvent.click(screen.getByRole('button', { name: '刷新状态' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('inventory offline');
+  expect(screen.queryByRole('button', { name: '查看设备：Registered NAS' })).toBeNull();
+  expect(screen.queryByRole('complementary')).toBeNull();
+  expect(screen.getByRole('button', { name: '查看设备：Actual peer' })).toBeTruthy();
+});
+it('keeps loaded devices usable while another source is still loading', async () => {
+  vi.mocked(rfileApi.status).mockReturnValue(new Promise(() => {}));
+  render(<TopologyView />); await select();
+  expect(screen.getByRole('complementary', { name: '设备详情' })).toBeTruthy();
+  expect(screen.queryByText('正在读取设备…')).toBeNull();
+  expect(screen.getByText('正在读取R-File…').getAttribute('role')).toBe('status');
+});
+it('updates selected details from new snapshots and closes them when removed', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValueOnce([nas]).mockResolvedValueOnce([{ ...nas, host: '192.0.2.99', connection_status: 'offline' }]).mockResolvedValue([]);
+  render(<TopologyView />); await select(); fireEvent.click(screen.getByRole('button', { name: '刷新状态' }));
+  await screen.findByText('192.0.2.99:22'); fireEvent.click(screen.getByRole('button', { name: '刷新状态' }));
+  await waitFor(() => expect(screen.queryByRole('complementary')).toBeNull());
+});
+it('shows gateway state separately and offers only supported safe access', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValue([{ ...nas, source: 'gateway', connection_status: 'unknown', gateway_status: 'online', access_mode: 'none' }, { ...nas, id: 'web', name: 'Web NAS', port: 443, access_mode: 'web', web_scheme: 'https' }, { ...nas, id: 'rev', name: 'Revoked PC', connection_status: 'revoked' }]);
+  render(<TopologyView onSsh={vi.fn()} />); await select();
+  expect(within(screen.getByRole('complementary')).getByText('网关状态')).toBeTruthy();
+  expect(within(screen.getByRole('complementary')).getByText('未知')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'SSH 连接' })).toBeNull();
+  await select('Web NAS'); expect(screen.getByRole('link', { name: '打开 Web 服务' }).getAttribute('href')).toBe('https://[::1]:443/');
+  await select('Revoked PC'); expect(screen.queryByRole('button', { name: 'SSH 连接' })).toBeNull();
+});
+it('routes R-File peers to the service without inventing SSH or per-peer file access', async () => {
+  vi.mocked(rfileApi.status).mockResolvedValue({ ...bridge, devices: [{ deviceId: 'p', deviceName: 'RFile peer', presence: 'online', initiationBlockedReason: 'Does not accept remote access' }] });
+  const onRFile = vi.fn(); render(<TopologyView onRFile={onRFile} onSsh={vi.fn()} />); await select('RFile peer');
+  expect(screen.queryByRole('button', { name: 'SSH 连接' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '打开文件' })).toBeNull();
+  expect(screen.getByText('Does not accept remote access')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '查看 R-File 服务' })); expect(onRFile).toHaveBeenCalledOnce();
+});
+it('hands off add/edit actions and bounds/reset zoom', async () => {
+  const onManage = vi.fn(); render(<TopologyView onManage={onManage} />); await select();
+  fireEvent.click(screen.getByRole('button', { name: '编辑设备' })); expect(onManage).toHaveBeenCalledWith(nas);
+  fireEvent.click(screen.getByRole('button', { name: '添加设备' })); expect(onManage).toHaveBeenLastCalledWith();
+  for (let i = 0; i < 30; i++) fireEvent.click(screen.getByRole('button', { name: '放大' }));
+  expect((screen.getByRole('button', { name: '放大' }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText('300%')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '适应视图' })); expect(screen.queryByText('300%')).toBeNull();
+});
+it('edits a local annotation from details without calling the device configuration API', async () => {
+  const onManage=vi.fn(); render(<TopologyView onManage={onManage} />); await select();
+  fireEvent.click(screen.getByRole('button',{name:'编辑显示名称与备注'}));
+  fireEvent.change(screen.getByLabelText('显示名称'),{target:{value:'Home storage'}});
+  fireEvent.change(screen.getByLabelText('本机备注'),{target:{value:'Local label'}});
+  fireEvent.click(screen.getByRole('button',{name:'保存标注'}));
+  expect(onManage).not.toHaveBeenCalled();
+  expect(screen.getByRole('button',{name:'查看设备：Home storage'})).toBeTruthy();
+  expect(screen.getByText('本机备注：Local label')).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('搜索设备'),{target:{value:'Registered NAS'}});
+  expect(screen.getByRole('button',{name:'查看设备：Home storage'})).toBeTruthy();
+});
+
+it('shows this desktop independently of the remote server and an empty inventory', async () => {
+  vi.mocked(devicesApi.list).mockResolvedValue([]);
+  render(<TopologyView onManage={vi.fn()} onSsh={vi.fn()} />);
+  await select('本电脑');
+  await screen.findByText('lcx_ace', { selector: '.topology-details dd' });
+  expect(screen.getByText('real-server')).toBeTruthy();
+  const details = screen.getByRole('complementary');
+  expect(within(details).getByText('Windows')).toBeTruthy();
+  expect(within(details).getByText('组网未确认')).toBeTruthy();
+  expect(within(details).queryByRole('button', { name: 'SSH 连接' })).toBeNull();
+  expect(within(details).queryByRole('button', { name: '编辑设备' })).toBeNull();
+  expect(screen.getByRole('button', { name: '在线设备 0' })).toBeTruthy();
+});
+
+it('keeps this computer visible when the service fails without inventing a hostname', async () => {
+  vi.mocked(getClientDeviceInfo).mockResolvedValue({ hostname: null, platform: 'unknown', runtime: 'browser' });
+  vi.mocked(devicesApi.list).mockRejectedValue(new Error('service unavailable'));
+  vi.mocked(systemApi.getInfo).mockRejectedValue(new Error('server unavailable'));
+  render(<TopologyView />);
+  await screen.findByRole('alert'); await select('本电脑');
+  expect(within(screen.getByRole('complementary')).getByText('浏览器未提供')).toBeTruthy();
+  expect(screen.queryByText('real-server')).toBeNull();
+});
+
+it('refreshes the local Agent and confirms the matched controlplane after enrollment, merging its real peer', async () => {
+  const localPeer = { ...nas, id: 'local-peer', name: 'lcx_ace inventory', host: '100.126.3.139', source: 'netbird' as const, peer_id: 'peer-current' };
+  vi.mocked(devicesApi.list).mockResolvedValue([localPeer]);
+  vi.mocked(getClientDeviceInfo).mockResolvedValueOnce({ hostname: 'lcx_ace', platform: 'windows', runtime: 'desktop', netbird: null }).mockResolvedValue({ hostname: 'lcx_ace', platform: 'windows', runtime: 'desktop', netbird: { daemonStatus: 'Connected', management: { url: 'https://175.178.16.90:7443', connected: true }, signal: { connected: true }, netbirdIp: '100.126.3.139/16' } });
+  vi.mocked(meshApi.status).mockResolvedValue({ configured: true, reachable: true, management_url: 'https://175.178.16.90:7443', peers: 1, connected: 1, reason: null });
+  vi.mocked(meshApi.peers).mockResolvedValue([{ id: 'peer-current', name: 'lcx_ace', ip: '100.126.3.139', ipv6: null, connected: true, last_seen: null, os: 'windows', groups: [] }]);
+  render(<TopologyView />); await select('本电脑');
+  expect(within(screen.getByRole('complementary')).getByText('组网未确认')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '刷新状态' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '全部设备 1' })).toBeTruthy());
+  const details = screen.getByRole('complementary');
+  expect(within(details).getByText('已入网 · 管理端在线')).toBeTruthy();
+  expect(within(details).getByText('100.126.3.139')).toBeTruthy();
+  expect(within(details).getAllByText('https://175.178.16.90:7443/')).toHaveLength(2);
+  expect(screen.queryByRole('button', { name: '查看设备：lcx_ace inventory' })).toBeNull();
+  expect(getClientDeviceInfo).toHaveBeenCalledTimes(2);
+});

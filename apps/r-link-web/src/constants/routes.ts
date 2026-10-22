@@ -23,10 +23,12 @@ export type RouteId =
   | 'analytics'
   | 'network'
   | 'mesh'
+  | 'fabric'
   | 'remote'
   | 'frp'
   | 'domains'
   | 'storage'
+  | 'rfile'
   | 'plugins'
   | 'downloads'
   | 'ssh'
@@ -45,9 +47,9 @@ export interface RouteConfig {
 export const routes: RouteConfig[] = [
   {
     id: 'dashboard',
-    label: '仪表盘',
+    label: '系统概览',
     icon: LayoutGrid,
-    title: '仪表盘',
+    title: '系统概览',
     description: '系统概览与状态监控',
   },
   {
@@ -59,10 +61,10 @@ export const routes: RouteConfig[] = [
   },
   {
     id: 'network',
-    label: '设备连接视图',
+    label: '设备拓扑',
     icon: Share2,
-    title: '设备连接视图',
-    description: '已登记设备及 TCP 检测结果',
+    title: '设备拓扑',
+    description: '设备状态、管理关系与设备详情',
   },
   {
     id: 'mesh',
@@ -72,10 +74,14 @@ export const routes: RouteConfig[] = [
     description: '真实节点、入网密钥、访问策略和网络路由',
   },
   {
+    id: 'fabric', label: '自研组网', icon: Network, title: 'R-Link 自研组网',
+    description: '自研控制面、直连探测和中转路径',
+  },
+  {
     id: 'remote',
-    label: '设备列表',
+    label: '设备管理',
     icon: Monitor,
-    title: '远程设备',
+    title: '设备管理',
     description: '管理远程连接与终端节点',
   },
   {
@@ -105,6 +111,13 @@ export const routes: RouteConfig[] = [
     icon: Folder,
     title: '服务端共享文件',
     description: '共享区浏览、上传和下载',
+  },
+  {
+    id: 'rfile',
+    label: 'R-File',
+    icon: Folder,
+    title: 'R-File 服务',
+    description: '复用 R-File 网络服务和共享目录',
   },
   {
     id: 'plugins',
@@ -140,7 +153,7 @@ export const routes: RouteConfig[] = [
 export const routesByGroupId: Record<string, RouteId[]> = {
   overview: ['dashboard', 'analytics'],
   network: ['network', 'mesh', 'remote', 'ssh', 'console', 'frp', 'domains', 'clash'],
-  storage: ['storage'],
+  storage: ['storage', 'rfile'],
   extensions: ['plugins', 'downloads'],
 };
 

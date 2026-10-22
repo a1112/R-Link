@@ -1,7 +1,8 @@
 import { listen } from '@tauri-apps/api/event';
 import { isTauriRuntime } from './utils/tauriWindow';
 import type { Device } from './api/devices';
-import React, { useEffect, useState } from "react";
+import type { DeviceInitialAction } from './components/pages/RemoteView';
+import React, { useCallback, useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { getThemeStyles, type ThemeName } from "./constants/theme";
 import type { RouteId } from "./constants/routes";
@@ -9,12 +10,19 @@ import { MainLayout } from "./components/layout";
 import { TopologyView } from "./components/TopologyView";
 import { DashboardView } from "./components/DashboardView";
 import { PluginsView } from "./components/PluginsView";
+import { useAccount } from './hooks/useAccount';
+import { AccountGate } from './components/AccountPanel';
+import { accessibleRoutes } from './constants/access-routes';
+import { canOperate } from './api/account-access';
+import { ReadOnlyInventory } from './components/pages/ReadOnlyInventory';
 
 const RemoteView = React.lazy(() => import('./components/pages/RemoteView'));
 const FRPView = React.lazy(() => import('./components/pages/FRPView'));
 const MeshView = React.lazy(() => import('./components/pages/MeshView'));
+const FabricView = React.lazy(() => import('./components/pages/FabricView'));
 const DomainView = React.lazy(() => import('./components/pages/DomainView'));
 const StorageView = React.lazy(() => import('./components/pages/StorageView'));
+const RFileView = React.lazy(() => import('./components/pages/RFileView'));
 const SSHView = React.lazy(() => import('./components/pages/SSHView'));
 const ConsoleView = React.lazy(() => import('./components/pages/ConsoleView'));
 const DownloadsView = React.lazy(() => import('./components/pages/DownloadsView'));
@@ -22,14 +30,29 @@ const ClashView = React.lazy(() => import('./components/pages/ClashView'));
 const TrafficView = React.lazy(() => import('./components/pages/TrafficView'));
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<RouteId>('dashboard');
+  const accountActions = useAccount();
+  const { account } = accountActions;
+  const allowedRoutes = accessibleRoutes(account);
+  const [activeTab, setActiveTab] = useState<RouteId>('network');
+  const [deviceAction, setDeviceAction] = useState<DeviceInitialAction | null>(null);
+  const clearDeviceAction = useCallback(() => setDeviceAction(null), []);
+  const navigate = (route: RouteId) => { if (!allowedRoutes.includes(route)) return; setDeviceAction(null); setActiveTab(route); };
   const [sshVisited, setSshVisited] = useState(false);
   useEffect(() => { if (activeTab === 'ssh') setSshVisited(true); }, [activeTab]);
   const [sshTarget, setSshTarget] = useState<Device | null>(null);
   const [theme, setTheme] = useState<ThemeName>('zinc');
   const [accessRevision, setAccessRevision] = useState(0);
   useEffect(() => {
-    const refresh = () => setAccessRevision(value => value + 1);
+    setSshTarget(null); setDeviceAction(null); setSshVisited(false);
+    setActiveTab('network');
+  }, [account.revision]);
+  useEffect(() => {
+    const refresh = () => {
+      setSshTarget(null);
+      setDeviceAction(null);
+      setSshVisited(false);
+      setAccessRevision(value => value + 1);
+    };
     window.addEventListener('r-link-service-access-changed', refresh);
     return () => window.removeEventListener('r-link-service-access-changed', refresh);
   }, []);
@@ -39,6 +62,7 @@ export default function App() {
     let active = true;
     const unlisten = listen<string>('desktop-action', event => {
       if (!active) return;
+      setDeviceAction(null);
       if (event.payload !== 'settings') window.dispatchEvent(new Event('r-link-close-settings'));
       if (event.payload === 'devices') setActiveTab('remote');
       if (event.payload === 'dashboard') setActiveTab('dashboard');
@@ -52,16 +76,22 @@ export default function App() {
   }, []);
 
   const renderContent = () => {
+    if (account.status !== 'ready' || (account.config?.mode === 'oidc' && (!account.session?.authenticated || !account.session.user || account.session.user.disabled || account.session.user.role === 'pending'))) return <AccountGate actions={accountActions} />;
+    if (!allowedRoutes.includes(activeTab)) return <p className="p-6">当前账户没有此页面的访问权限。</p>;
+    if (activeTab === 'fabric') return <FabricView canManage={account.config?.mode !== 'oidc' || account.session?.user?.role === 'admin'} />;
+    if (account.config?.mode === 'oidc' && !canOperate(account)) return <ReadOnlyInventory mesh={activeTab === 'mesh'} />;
+    if (account.config?.mode === 'oidc' && account.session?.user?.role === 'operator' && activeTab === 'mesh') return <ReadOnlyInventory mesh />;
     switch (activeTab) {
       case 'dashboard': return <DashboardView />;
       case 'analytics': return <TrafficView onConfigureClash={() => setActiveTab('clash')} />;
-      case 'network': return <TopologyView onDevices={() => setActiveTab('remote')} onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} />;
+      case 'network': return <TopologyView onManage={device => { setDeviceAction(device ? { kind: 'edit', deviceId: device.id } : { kind: 'add' }); setActiveTab('remote'); }} onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} onRFile={() => setActiveTab('rfile')} onStorage={() => setActiveTab('storage')} />;
       case 'mesh': return <MeshView />;
       case 'plugins': return <PluginsView />;
-      case 'remote': return <RemoteView onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} />;
+      case 'remote': return <RemoteView initialAction={deviceAction} onInitialActionHandled={clearDeviceAction} onSsh={device => { setSshTarget(device); setActiveTab('ssh'); }} canManageMembership={account.config?.mode !== 'oidc' || account.session?.user?.role === 'admin'} />;
       case 'frp': return <FRPView />;
       case 'domains': return <DomainView />;
       case 'storage': return <StorageView />;
+      case 'rfile': return <RFileView />;
       case 'ssh': return null;
       case 'console': return <ConsoleView />;
       case 'downloads': return <DownloadsView />;
@@ -73,12 +103,12 @@ export default function App() {
   return (
     <div className="flex h-screen bg-[var(--c-950)] text-[var(--c-200)] font-sans overflow-hidden" style={getThemeStyles(theme)}>
       <Toaster position="bottom-right" theme="dark" />
-      <MainLayout activeRoute={activeTab} onRouteChange={setActiveTab} currentTheme={theme} onThemeChange={setTheme}>
-        <React.Suspense key={accessRevision} fallback={<div className="p-6">加载中...</div>}>
+      <MainLayout activeRoute={activeTab} onRouteChange={navigate} currentTheme={theme} onThemeChange={setTheme} allowedRoutes={allowedRoutes} accountActions={accountActions}>
+        <React.Suspense key={`${accessRevision}:${account.revision}`} fallback={<div className="p-6">加载中...</div>}>
           <div className={activeTab === 'ssh' ? 'h-full' : 'hidden'}>
-            {(sshVisited || activeTab === 'ssh') && <SSHView initialTarget={sshTarget} />}
+            {canOperate(account) && allowedRoutes.includes('ssh') && (sshVisited || activeTab === 'ssh') && <SSHView initialTarget={sshTarget} />}
           </div>
-          {activeTab !== 'ssh' && renderContent()}
+          {(activeTab !== 'ssh' || !canOperate(account)) && renderContent()}
         </React.Suspense>
       </MainLayout>
     </div>

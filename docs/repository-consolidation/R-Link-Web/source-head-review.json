@@ -82,7 +82,7 @@
       "source_git_blob": "18506a1814383de1288f7b8e6f108438c6784b73",
       "target_path": "apps/r-link-web/src/constants/mockData.ts",
       "archive_path": "docs/repository-consolidation/R-Link-Web/followup-originals/src/constants/mockData.ts.source.txt",
-      "retired_reason": "Legacy mock data was retired from the maintained application; live service data is used instead."
+      "retired_reason": "已移除模拟设备数据，运行界面读取服务端；来源原件保留用于迁移审查"
     },
     {
       "source_path": "vite.config.ts",

@@ -5,7 +5,10 @@ import { sshSocketUrl } from '../../api/ssh-socket';
  * 提供管理当前页面的 SSH 连接（凭据不保存到磁盘）和 Web 终端功能
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { devicesApi, type Device } from '../../api/devices';
+import { usePolling } from '../../api/usePolling';
+import { deviceAccessMode } from '../device-presentation';
 import {
   Terminal as TerminalIcon,
   Plus,
@@ -72,9 +75,42 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<ConnectionForm>(emptyForm);
   const [showKeyInput, setShowKeyInput] = useState(false);
+  const inventory = usePolling(useCallback((signal: AbortSignal) => devicesApi.list(signal), []), 5000);
+  const registered = (inventory.data ?? []).filter(device => deviceAccessMode(device) === 'ssh');
+  const keyReader = useRef<FileReader | null>(null);
+  useEffect(() => () => { keyReader.current?.abort(); keyReader.current = null; }, [showForm]);
+  const openRegistered = (device: Device) => {
+    keyReader.current?.abort(); keyReader.current = null;
+    setEditingConnection(null); setShowKeyInput(false);
+    setFormData({ ...emptyForm, name: device.name, host: device.host, port: device.port, username: device.username });
+    setShowForm(true);
+  };
+  const importKey = (file?: File) => {
+    keyReader.current?.abort(); keyReader.current = null;
+    if (!file) return;
+    if (file.size > 256 * 1024) { toast.error('私钥文件不能超过 256 KB'); return; }
+    const reader = new FileReader(); keyReader.current = reader;
+    reader.onload = () => {
+      if (keyReader.current !== reader) return;
+      keyReader.current = null;
+      const key = String(reader.result ?? '').trim();
+      if (!/^-----BEGIN (?:OPENSSH |RSA |EC |DSA |ENCRYPTED )?PRIVATE KEY-----/.test(key)) {
+        toast.error('请选择 PEM 或 OpenSSH 私钥文件'); return;
+      }
+      setFormData(previous => ({ ...previous, privateKey: key, password: '' }));
+      toast.success('私钥已读入本次连接，凭据不保存到磁盘');
+    };
+    reader.onerror = () => { if (keyReader.current === reader) { keyReader.current = null; toast.error('无法读取私钥文件'); } };
+    reader.readAsText(file);
+  };
+  const closeForm = () => {
+    keyReader.current?.abort(); keyReader.current = null;
+    setShowForm(false); setFormData(emptyForm); setEditingConnection(null);
+  };
 
   useEffect(() => {
     if (initialTarget) {
+      keyReader.current?.abort(); keyReader.current = null;
       setViewMode('list');
       setSelectedConnection(null);
       setEditingConnection(null);
@@ -116,6 +152,7 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
 
   // 新建连接
   const handleNewConnection = () => {
+    keyReader.current?.abort(); keyReader.current = null;
     setEditingConnection(null);
     setFormData(emptyForm);
     setShowForm(true);
@@ -124,6 +161,7 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
   // 编辑连接
   const handleEditConnection = (conn: SSHConnection, e: React.MouseEvent) => {
     e.stopPropagation();
+    keyReader.current?.abort(); keyReader.current = null;
     setEditingConnection(conn);
     setFormData({
       name: conn.name,
@@ -403,15 +441,15 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-            onClick={() => setShowForm(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={closeForm}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="bg-[var(--c-900)] border border-[var(--c-800)] rounded-2xl p-6 w-full max-w-lg"
+              className="bg-[var(--c-900)] border border-[var(--c-800)] rounded-2xl p-6 w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
@@ -419,7 +457,8 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
                   {editingConnection ? '编辑连接' : '新建连接'}
                 </h3>
                 <button
-                  onClick={() => setShowForm(false)}
+                  onClick={closeForm}
+                  aria-label="关闭连接表单"
                   className="p-1 hover:bg-[var(--c-800)] rounded text-[var(--c-500)] hover:text-[var(--c-200)]"
                 >
                   <X size={20} />
@@ -487,7 +526,7 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
                     <input
                       type="checkbox"
                       checked={showKeyInput}
-                      onChange={(e) => setShowKeyInput(e.target.checked)}
+                      onChange={(e) => { keyReader.current?.abort(); keyReader.current = null; setShowKeyInput(e.target.checked); }}
                       className="rounded"
                     />
                     使用私钥认证
@@ -495,10 +534,15 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
 
                   {showKeyInput ? (
                     <div className="space-y-3">
+                      <label className="block text-xs text-[var(--c-500)]">导入私钥文件
+                        <input type="file" aria-label="导入私钥文件" accept=".pem,.key,text/plain" className="block mt-2 w-full text-xs" onChange={event => { importKey(event.target.files?.[0]); event.target.value = ''; }} />
+                      </label>
+                      <p className="text-xs text-[var(--c-500)]">选择本机 PEM 或 OpenSSH 私钥；私钥仅用于当前会话。</p>
                       <textarea
+                        aria-label="私钥内容"
                         placeholder="-----BEGIN RSA PRIVATE KEY-----"
                         value={formData.privateKey}
-                        onChange={(e) => setFormData({ ...formData, privateKey: e.target.value })}
+                        onChange={(e) => { keyReader.current?.abort(); keyReader.current = null; setFormData({ ...formData, privateKey: e.target.value }); }}
                         className="w-full px-3 py-2 bg-[var(--c-950)] border border-[var(--c-800)] rounded-lg text-sm text-[var(--c-200)] placeholder:text-[var(--c-600)] focus:outline-none focus:border-blue-500 min-h-[80px] font-mono text-xs"
                       />
                       <input
@@ -526,7 +570,7 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
 
               <div className="flex justify-end gap-2 mt-6">
                 <button
-                  onClick={() => setShowForm(false)}
+                  onClick={closeForm}
                   className="px-4 py-2 bg-[var(--c-800)] hover:bg-[var(--c-700)] text-[var(--c-200)] rounded-lg text-sm font-medium transition-colors"
                 >
                   取消
@@ -546,6 +590,17 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
 
       {/* 连接列表 */}
       <div className="space-y-6">
+        <section aria-label="已登记 SSH 设备" className="space-y-3">
+          <h3 className="text-sm font-semibold text-[var(--c-200)]">已登记 SSH 设备</h3>
+          <p className="text-xs text-[var(--c-500)]">设备入口随服务清单保存。连接时提供密码或私钥。</p>
+          {inventory.loading && <p role="status" className="text-sm text-[var(--c-500)]">正在读取设备…</p>}
+          {inventory.error && <p role="alert" className="text-sm text-amber-400">设备清单暂不可用：{inventory.error.message}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{registered.map(device => <button key={device.id} aria-label={`连接 ${device.name}`} onClick={() => openRegistered(device)} className="text-left bg-[var(--c-900)] border border-[var(--c-800)] rounded-xl p-4 hover:border-blue-500 focus-visible:outline-blue-500">
+            <span className="flex items-center gap-2 text-sm font-semibold text-[var(--c-200)]"><Server size={18} className="text-blue-500" />{device.name}</span>
+            <span className="block mt-2 text-xs text-[var(--c-500)]">{device.username || '连接时填写用户名'}@{device.host.includes(':') ? `[${device.host}]` : device.host}:{device.port}</span>
+          </button>)}</div>
+          {!inventory.loading && !inventory.error && registered.length === 0 && <p className="text-sm text-[var(--c-500)]">可在设备管理中登记 SSH 设备。</p>}
+        </section>
         {Object.entries(groupedConnections).map(([group, conns]) => (
           <div key={group}>
             <h3 className="text-xs font-semibold text-[var(--c-600)] uppercase tracking-wider mb-3">{group}</h3>
@@ -611,7 +666,7 @@ export const SSHView = ({ initialTarget }: { initialTarget?: { name: string; hos
           </div>
         ))}
 
-        {connections.length === 0 && (
+        {connections.length === 0 && registered.length === 0 && (
           <div className="bg-[var(--c-900)] border border-[var(--c-800)] rounded-xl p-12 text-center">
             <TerminalIcon size={48} className="mx-auto text-[var(--c-700)] mb-4" />
             <p className="text-[var(--c-500)] mb-4">暂无 SSH 连接</p>

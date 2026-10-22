@@ -4,6 +4,7 @@ import { DesktopSettings } from './DesktopSettings';
  */
 
 import { ServiceAccessSettings } from './ServiceAccessSettings';
+import { UserAccessSettings } from './UserAccessSettings';
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { X, Settings, Shield, Monitor, CheckCircle2 } from "lucide-react";
@@ -18,9 +19,12 @@ export interface SettingsModalProps {
   currentTheme: ThemeName;
   /** 主题变更回调 */
   onThemeChange: (theme: ThemeName) => void;
+  accountMode?: boolean;
+  canManageUsers?: boolean;
+  identityRevision?: number;
 }
 
-type SettingsTab = 'general' | 'access' | 'display';
+type SettingsTab = 'general' | 'access' | 'display' | 'users';
 
 const tabConfig: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "通用设置", icon: Settings },
@@ -33,6 +37,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   currentTheme,
   onThemeChange,
+  accountMode,
+  canManageUsers,
+  identityRevision,
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
@@ -57,7 +64,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <h2 className="text-lg font-bold text-[var(--c-100)]">设置</h2>
           </div>
           <div className="space-y-1">
-            {tabConfig.map((tab) => (
+            {[...tabConfig, ...(canManageUsers ? [{ id: 'users' as const, label: '用户权限', icon: Shield }] : [])].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -78,7 +85,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex-1 flex flex-col min-w-0">
           <div className="h-14 border-b border-[var(--c-800-50)] flex items-center justify-between px-8 shrink-0">
             <h3 className="font-semibold text-[var(--c-200)]">
-              {tabConfig.find(t => t.id === activeTab)?.label}
+              {activeTab === 'users' ? '用户权限' : tabConfig.find(t => t.id === activeTab)?.label}
             </h3>
             <button
               onClick={onClose}
@@ -92,7 +99,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex-1 p-8 overflow-y-auto scrollbar-card">
             {activeTab === "general" && <DesktopSettings />}
 
-            {activeTab === "access" && <ServiceAccessSettings />}
+            {activeTab === "access" && <ServiceAccessSettings accountMode={accountMode} />}
+            {activeTab === 'users' && canManageUsers && <UserAccessSettings key={identityRevision} />}
 
             {activeTab === "display" && (
               <div className="space-y-6">

@@ -37,12 +37,14 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   return (
     <button
       onClick={onClick}
+      aria-label={label}
+      aria-current={active ? 'page' : undefined}
       disabled={disabled}
       className={`w-full flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2 rounded-lg transition-all duration-200 text-sm font-medium ${
         disabled
           ? 'opacity-50 cursor-not-allowed'
           : active
-          ? "bg-[var(--c-800)] text-[var(--c-100)]"
+          ? "bg-blue-500/15 text-blue-400 shadow-[inset_2px_0_0_#2797ff]"
           : "text-[var(--c-500)] hover:bg-[var(--c-800-50)] hover:text-[var(--c-300)]"
       } ${className}`}
       title={collapsed ? label : undefined}

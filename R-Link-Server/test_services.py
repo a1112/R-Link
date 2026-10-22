@@ -6,6 +6,7 @@ from pathlib import Path
 
 import aiohttp
 from aiohttp import web
+import psutil
 import pytest
 import pytest_asyncio
 from fastapi import HTTPException
@@ -253,6 +254,7 @@ async def test_process_lifecycle_redacts_logs_and_recovers_owned_pid(tmp_path):
     try:
         await service.start([sys.executable, '-u', '-c', 'import time; print("private-token", flush=True); time.sleep(30)'], secrets=('private-token',))
         assert service.status()['state'] == 'running'
+        assert Path(state.get('process', 'fixture')['executable']).resolve() == Path(psutil.Process(service.process.pid).exe()).resolve()
         for _ in range(30):
             if '[redacted]' in service.logs():
                 break
@@ -277,24 +279,49 @@ async def test_recovery_never_kills_a_reused_pid(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_failed_process_persistence_does_not_leave_a_child(tmp_path, monkeypatch):
+@pytest.mark.parametrize('field', ['executable', 'cwd'])
+async def test_recovery_never_kills_a_mismatched_process_identity(tmp_path, field):
+    state = ServiceState(tmp_path)
+    service = ManagedService(state, 'fixture')
+    try:
+        await service.start([sys.executable, '-c', 'import time; time.sleep(30)'])
+        record = state.get('process', 'fixture')
+        record[field] = str(tmp_path / 'different-identity')
+        state.save('process', record, 'fixture')
+        await recover_processes(state)
+        assert service.process.poll() is None
+        assert state.list('process') == []
+    finally:
+        await service.stop()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('failure_at', [1, 2])
+async def test_failed_process_persistence_does_not_leave_a_child(tmp_path, monkeypatch, failure_at):
     import core.managed_service as module
     state = ServiceState(tmp_path)
     service = ManagedService(state, 'fixture')
     real_popen = module.subprocess.Popen
+    real_save = state.save
     children = []
+    writes = 0
     def create(*args, **kwargs):
         process = real_popen(*args, **kwargs)
         children.append(process)
         return process
     def no_space(*args, **kwargs):
-        raise OSError('disk full')
+        nonlocal writes
+        writes += 1
+        if writes == failure_at:
+            raise OSError('disk full')
+        return real_save(*args, **kwargs)
     monkeypatch.setattr(module.subprocess, 'Popen', create)
     monkeypatch.setattr(state, 'save', no_space)
     with pytest.raises(OSError, match='disk full'):
         await service.start([sys.executable, '-c', 'import time; time.sleep(30)'])
     assert children[0].poll() is not None
     assert service.process is None
+    assert state.list('process') == []
 
 
 def test_tunnel_and_caddy_configuration(monkeypatch, tmp_path):

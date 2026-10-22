@@ -5,6 +5,7 @@
 
 import { API_CONFIG } from './config';
 import { authenticatedFetch } from './authenticated-fetch';
+import { accountRequestEpoch } from './account-access';
 import type { ApiError } from './types';
 
 export interface RequestConfig extends RequestInit {
@@ -13,10 +14,10 @@ export interface RequestConfig extends RequestInit {
 }
 
 export class HttpClient {
-  private baseURL: string;
+  private baseURL: string | undefined;
   private defaultTimeout: number;
 
-  constructor(baseURL: string = API_CONFIG.baseURL, timeout: number = API_CONFIG.timeout) {
+  constructor(baseURL?: string, timeout: number = API_CONFIG.timeout) {
     this.baseURL = baseURL;
     this.defaultTimeout = timeout;
   }
@@ -25,7 +26,7 @@ export class HttpClient {
    * 构建完整 URL
    */
   private buildUrl(endpoint: string, params?: Record<string, string | number>): string {
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
+    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL ?? API_CONFIG.baseURL}${endpoint}`;
 
     if (!params) {
       return url;
@@ -82,6 +83,7 @@ export class HttpClient {
   async request<T>(endpoint: string, config: RequestConfig = {}): Promise<T> {
     const { params, timeout = this.defaultTimeout, signal: callerSignal, ...fetchConfig } = config;
     const url = this.buildUrl(endpoint, params);
+    const accountEpoch = accountRequestEpoch();
     const [controller, timeoutId] = this.createTimeoutController(timeout);
     const abort = () => controller.abort();
     if (callerSignal?.aborted) abort();
@@ -96,7 +98,9 @@ export class HttpClient {
         headers,
       });
 
-      return await this.handleResponse<T>(response);
+      const result = await this.handleResponse<T>(response);
+      if (accountEpoch !== accountRequestEpoch()) throw new Error('账户或服务已更改，已忽略旧响应');
+      return result;
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         if (callerSignal?.aborted) throw error;

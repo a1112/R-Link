@@ -1,8 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{LogicalSize, Size};
 #[cfg(not(mobile))]
 use tauri::Manager;
+use tauri::{LogicalSize, Size};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -12,15 +12,29 @@ pub fn run() {
         desktop_tray::show_main(app);
     }));
     #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_autostart::init(
+        tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+        Some(vec!["--autostart"]),
+    ));
+    #[cfg(desktop)]
     let builder = builder.invoke_handler(tauri::generate_handler![
+        client_device::desktop_device_info,
+        fabric_device::desktop_fabric_info,
+        auth_browser::open_auth_login,
+        auth_transport::desktop_auth_request,
         project_resource_monitor::project_resource_snapshot,
         desktop_tray::desktop_preferences,
         desktop_tray::set_close_to_tray,
+        desktop_tray::set_autostart,
         desktop_tray::hide_to_tray,
     ]);
     #[cfg(mobile)]
-    let builder = builder.invoke_handler(tauri::generate_handler![project_resource_monitor::project_resource_snapshot]);
-    builder.plugin(project_window_chrome::init())
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        project_resource_monitor::project_resource_snapshot
+    ]);
+    builder
+        .plugin(tauri_plugin_opener::init())
+        .plugin(project_window_chrome::init())
         .plugin(project_resource_monitor::init())
         .setup(|app| {
             #[cfg(desktop)]
@@ -49,3 +63,15 @@ mod project_window_chrome;
 
 #[cfg(desktop)]
 mod desktop_tray;
+
+#[cfg(desktop)]
+mod client_device;
+
+#[cfg(desktop)]
+mod fabric_device;
+
+#[cfg(desktop)]
+mod auth_browser;
+
+#[cfg(desktop)]
+mod auth_transport;

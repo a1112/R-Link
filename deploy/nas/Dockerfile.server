@@ -1,0 +1,18 @@
+FROM python:3.12-alpine
+ARG R_LINK_SOURCE_COMMIT=source-checkout
+LABEL org.opencontainers.image.revision=$R_LINK_SOURCE_COMMIT
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY deploy/nas/requirements.lock /tmp/requirements.lock
+RUN pip install --no-cache-dir --only-binary=:all: -r /tmp/requirements.lock && \
+    addgroup -g 10001 rlink && adduser -D -u 10001 -G rlink rlink
+COPY R-Link-Server/main.py ./main.py
+COPY R-Link-Server/api ./api
+COPY R-Link-Server/core ./core
+COPY R-Link-Server/builtin ./builtin
+RUN mkdir -p /data /app/logs /app/config /app/plugins && chown -R 10001:10001 /app /data
+USER 10001
+ENV R_LINK_HOST=0.0.0.0 R_LINK_DATA_DIR=/data/services R_LINK_DEVICES_DB=/data/devices.sqlite3 R_LINK_STORAGE_DIR=/data/shared
+EXPOSE 8210
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8210/health', timeout=3)"
+CMD ["python", "main.py"]

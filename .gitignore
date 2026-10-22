@@ -11,6 +11,7 @@ binaries/
 
 # 配置文件 (包含敏感信息)
 *.conf
+!deploy/nginx.conf
 *.ini
 !*.example
 !deploy/nginx.conf
@@ -47,6 +48,9 @@ logs/
 R-Link-Server/config/plugin_sources.json
 
 R-Link-Server/config/devices.sqlite3*
+R-Link-Server/config/auth.sqlite3*
+R-Link-Server/config/fabric.sqlite3*
+agent/rlink-agent
 R-Link-Server/shared/
 R-Link-Server/data/
 R-Link-Server/.env

@@ -75,6 +75,7 @@ class ManagedService:
             raise HTTPException(503, self.error) from None
         process = self.process
         try:
+            image = str(Path(args[0]).resolve())
             try:
                 running = psutil.Process(process.pid)
                 created = running.create_time()
@@ -119,6 +120,10 @@ class ManagedService:
             # The initial PID record protects the launch window. Refresh the
             # executable after a launcher has had time to exec its real binary.
             running = psutil.Process(process.pid)
+            # The PID must remain the same process during launch.  A launcher
+            # may replace its image, but it must not hand us a reused PID.
+            if created and abs(running.create_time() - created) >= 0.01:
+                raise RuntimeError('Owned service process identity changed during startup')
             self.state.save('process', {'pid': process.pid, 'created': created,
                                         'executable': str(Path(running.exe()).resolve()),
                                         'cwd': str(self.directory)}, self.key)
