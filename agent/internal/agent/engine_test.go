@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -103,6 +104,16 @@ func ipv4Packet(payload string) []byte {
 }
 
 func TestWireGuardEncryptedDirectThenRealWebSocketRelay(t *testing.T) {
+	testWireGuardDirectThenRelay(t, false)
+}
+
+// Keep production keepalives enabled here. Queue traffic without candidates
+// and verify delivery after candidates become available.
+func TestWireGuardRecoversWhenCandidatesArriveAfterStartup(t *testing.T) {
+	testWireGuardDirectThenRelay(t, true)
+}
+
+func testWireGuardDirectThenRelay(t *testing.T, lateCandidates bool) {
 	a, c := testIdentity(t, testID(1), "10.253.199.2"), testIdentity(t, testID(2), "10.253.199.3")
 	ca, cc := testConfig(a, c, testKey(7)), testConfig(c, a, testKey(7))
 	ba, bc := NewBind(testID(1)), NewBind(testID(2))
@@ -125,11 +136,38 @@ func TestWireGuardEncryptedDirectThenRealWebSocketRelay(t *testing.T) {
 	if e = ec.Apply(cc); e != nil {
 		t.Fatal(e)
 	}
+	if !lateCandidates {
+		// This test targets data paths, not startup timers. Avoid spending most of
+		// its payload deadline on keepalive's initial handshake before routes exist.
+		for _, peer := range []struct {
+			engine *Engine
+			remote Identity
+		}{{ea, c}, {ec, a}} {
+			key, err := decodeKey(peer.remote.PublicKey)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = peer.engine.device.IpcSet("public_key=" + hex.EncodeToString(key[:]) + "\npersistent_keepalive_interval=0\n"); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 	if e = ea.Up(); e != nil {
 		t.Fatal(e)
 	}
 	if e = ec.Up(); e != nil {
 		t.Fatal(e)
+	}
+	packet := ipv4Packet("the direct payload is encrypted by WireGuard")
+	if lateCandidates {
+		// Queue real traffic while no route exists. Supplying candidates below
+		// must recover the queued packet without reapplying peers or restarting.
+		ta.in <- packet
+		select {
+		case <-tc.out:
+			t.Fatal("packet delivered before any path exists")
+		case <-time.After(100 * time.Millisecond):
+		}
 	}
 	ca.Peers[0].Candidates = []Candidate{{IP: "127.0.0.1", Port: bc.Port()}}
 	cc.Peers[0].Candidates = []Candidate{{IP: "127.0.0.1", Port: ba.Port()}}
@@ -137,9 +175,12 @@ func TestWireGuardEncryptedDirectThenRealWebSocketRelay(t *testing.T) {
 	bc.ReplacePeers(cc)
 	ba.Probe()
 	bc.Probe()
-	waitFor(t, func() bool { return len(ba.Status()) == 1 && ba.Status()[0].Path == "direct" })
-	packet := ipv4Packet("the direct payload is encrypted by WireGuard")
-	ta.in <- packet
+	waitFor(t, func() bool {
+		return len(ba.Status()) == 1 && ba.Status()[0].Path == "direct" && len(bc.Status()) == 1 && bc.Status()[0].Path == "direct"
+	})
+	if !lateCandidates {
+		ta.in <- packet
+	}
 	select {
 	case got := <-tc.out:
 		if !bytes.Equal(got, packet) {
