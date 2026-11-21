@@ -1,5 +1,6 @@
 """Local compatibility, OIDC sessions, role gates and one-use SSH tickets."""
 import base64
+import asyncio
 import hashlib
 import hmac
 import ipaddress
@@ -11,7 +12,7 @@ from typing import Optional, Dict, Any
 
 from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from core import identity
+from core import central, identity
 
 security = HTTPBearer(auto_error=False)
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -80,7 +81,7 @@ class LocalAuth:
         if type(exp) is not int or exp <= int(time.time()) or not isinstance(sub, str) or not sub:
             return None
 
-        if not self.websocket_identity_valid(payload):
+        if not await asyncio.to_thread(self.websocket_identity_valid, payload):
             return None
         if not identity.consume_websocket_nonce(payload.get('nonce', ''), exp):
             return None
@@ -89,7 +90,10 @@ class LocalAuth:
     def websocket_identity_valid(self, payload: dict) -> bool:
         """Recheck the backing session even after the ticket was redeemed."""
         if payload.get('session_id'):
-            user = identity.session_from_hash(payload['session_id'])
+            try:
+                user = identity.session_from_hash(payload['session_id'])
+            except HTTPException:
+                return False
             return bool(user and user['id'] == payload.get('sub')
                         and identity.ROLES.get(user['role'], 0) >= identity.ROLES['operator'])
         if payload.get('principal') == 'service':
@@ -147,6 +151,8 @@ async def authenticate(
     credentials: Optional[HTTPAuthorizationCredentials] = Security(security),
 ) -> Dict[str, Any]:
     """Resolve the current native identity while retaining FastAPI dependency injection."""
+    if central.enabled():
+        return await asyncio.to_thread(authenticate_current, request, credentials)
     return authenticate_current(request, credentials)
 
 
@@ -157,9 +163,10 @@ def authenticate_current(
     """OIDC never falls back to local access; cookies cannot inherit a service key."""
     if identity.enabled():
         cookie = request.cookies.get(identity.SESSION_COOKIE)
-        if cookie:
+        central_cookie = central.enabled() and any(name in request.cookies for name in ('__Host-project_browser', '__Host-project_session'))
+        if central_cookie or (cookie and not central.enabled()):
             route = request.scope.get('route')
-            user = identity.read_session(cookie, allow_retired=bool(route and route.path == '/api/auth/logout'))
+            user = central.browser(request) if central_cookie else identity.read_session(cookie, allow_retired=bool(route and route.path == '/api/auth/logout'))
             if not user or user['kind'] != 'browser':
                 raise HTTPException(401, 'Session expired or revoked')
             if request.method not in {'GET', 'HEAD', 'OPTIONS'}:

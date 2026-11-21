@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 from fastapi import HTTPException
 from cryptography.fernet import Fernet
 from core.paths import CONFIG_DIR
+from core import central
 
 ROLES = {'pending': 0, 'viewer': 1, 'operator': 2, 'admin': 3}
 DB_LOCK = threading.RLock()
@@ -37,7 +38,7 @@ def decrypt_flow(value: str) -> str:
 
 
 def enabled() -> bool:
-    return os.getenv('R_LINK_AUTH_MODE', '').lower() == 'oidc' or bool(os.getenv('R_LINK_OIDC_ISSUER'))
+    return central.enabled() or os.getenv('R_LINK_AUTH_MODE', '').lower() == 'oidc' or bool(os.getenv('R_LINK_OIDC_ISSUER'))
 
 
 def mode() -> str:
@@ -45,7 +46,7 @@ def mode() -> str:
 
 
 def settings() -> dict:
-    issuer = os.getenv('R_LINK_OIDC_ISSUER', '')
+    issuer = os.getenv('OIDC_ISSUER', '') if central.enabled() else os.getenv('R_LINK_OIDC_ISSUER', '')
     public_url = os.getenv('R_LINK_PUBLIC_URL', '').rstrip('/')
     client_id = os.getenv('R_LINK_OIDC_CLIENT_ID', '')
     client_secret = os.getenv('R_LINK_OIDC_CLIENT_SECRET', '')
@@ -55,7 +56,9 @@ def settings() -> dict:
                 or parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password
                 or parsed.query or parsed.fragment):
             raise HTTPException(503, f'OIDC {name} must be a configured HTTPS URL')
-    if not client_id or not client_secret:
+    if central.enabled():
+        central.store()
+    elif not client_id or not client_secret:
         raise HTTPException(503, 'OIDC client is not configured')
     return {'issuer': issuer, 'public_url': public_url, 'client_id': client_id,
             'client_secret': client_secret, 'callback': public_url + '/api/auth/callback'}
@@ -106,6 +109,10 @@ def database():
                         state TEXT PRIMARY KEY, binding TEXT NOT NULL, nonce TEXT NOT NULL,
                         verifier TEXT NOT NULL, desktop_id TEXT, expires_at INTEGER NOT NULL,
                         used INTEGER NOT NULL DEFAULT 0, parent_session TEXT);
+                    CREATE TABLE IF NOT EXISTS central_sessions (
+                        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, revision INTEGER NOT NULL, csrf TEXT NOT NULL,
+                        browser_hash TEXT NOT NULL, session_hash TEXT NOT NULL, expires_at INTEGER NOT NULL,
+                        revoked INTEGER NOT NULL DEFAULT 0);
                     CREATE TABLE IF NOT EXISTS desktop_flows (
                         id TEXT PRIMARY KEY, secret TEXT NOT NULL, user_id TEXT,
                         expires_at INTEGER NOT NULL, started INTEGER NOT NULL DEFAULT 0);
@@ -116,7 +123,7 @@ def database():
                         action TEXT NOT NULL, created_at INTEGER NOT NULL);
                 ''')
                 current = int(time.time())
-                for table in ('sessions', 'flows', 'desktop_flows', 'websocket_uses'):
+                for table in ('sessions', 'flows', 'desktop_flows', 'websocket_uses', 'central_sessions'):
                     connection.execute(f'DELETE FROM {table} WHERE expires_at <= ?', (current,))
             with connection:
                 yield connection
@@ -180,6 +187,8 @@ def create_session_in_db(db, user_id: str, kind='browser', parent_session=None) 
 
 
 def session_from_hash(session_id: str, *, allow_retired=False) -> dict | None:
+    if session_id.startswith('r-auth:'):
+        return central.active(session_id) if central.enabled() else None
     with database() as db:
         row = db.execute('''SELECT users.*, sessions.id AS session_id, sessions.csrf,
                            sessions.expires_at, sessions.kind, sessions.family, sessions.current,
@@ -198,6 +207,8 @@ def read_session(token: str, *, allow_retired=False) -> dict | None:
 
 
 def revoke_session(session_id: str):
+    if central.enabled() and session_id.startswith('r-auth:'):
+        return central.logout(session_id)
     with database() as db:
         row = db.execute('SELECT family FROM sessions WHERE id=?', (session_id,)).fetchone()
         if row:

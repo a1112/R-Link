@@ -372,7 +372,7 @@ async def ssh_websocket(
     async def guard_session():
         while True:
             await asyncio.sleep(1)
-            if not access_manager.websocket_identity_valid(websocket.scope['r_link_ws_claims']):
+            if not await asyncio.to_thread(access_manager.websocket_identity_valid, websocket.scope['r_link_ws_claims']):
                 await conn.close()
                 return
 
@@ -420,7 +420,7 @@ async def ssh_websocket(
                     timeout=300  # 5 分钟超时
                 )
 
-                if not access_manager.websocket_identity_valid(websocket.scope['r_link_ws_claims']):
+                if not await asyncio.to_thread(access_manager.websocket_identity_valid, websocket.scope['r_link_ws_claims']):
                     break
 
                 msg_type = message.get("type")

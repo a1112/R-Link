@@ -42,11 +42,13 @@ export function useAccount() {
     window.addEventListener('r-link-service-access-changed', changed);
     window.addEventListener('r-link-account-refresh', check);
     document.addEventListener('visibilitychange', check);
-    const interval = setInterval(() => { if (getAccountState().config?.mode === 'oidc') check(); }, 45000);
+    window.addEventListener('focus', check);
+    const interval = setInterval(() => { if (getAccountState().session?.authenticated) check(); }, 5000);
     return () => {
       revision.current++; discovery.current?.abort(); login.current?.abort(); clearInterval(interval);
       window.removeEventListener('r-link-service-access-changed', changed);
       window.removeEventListener('r-link-account-refresh', check);
+      window.removeEventListener('focus', check);
       document.removeEventListener('visibilitychange', check);
     };
   }, [refresh]);

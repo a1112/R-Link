@@ -11,7 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 
-from core import identity
+from core import central, identity
 from core.auth import access_manager, authenticate, require_admin, require_operator, security, allowed_origins
 
 router = APIRouter(prefix='/api/auth', tags=['authentication'])
@@ -26,7 +26,7 @@ class WebSocketTokenResponse(BaseModel):
 @router.get('/config')
 def auth_config():
     return {'mode': identity.mode(), 'login_enabled': identity.configured(),
-            'desktop_login_enabled': identity.configured()}
+            'desktop_login_enabled': identity.configured() and (not central.enabled() or bool(identity.settings()['client_id'] and identity.settings()['client_secret']))}
 
 
 @router.get('/session')
@@ -78,7 +78,9 @@ async def oidc_client():
 def oidc_enabled():
     if not identity.enabled():
         raise HTTPException(404, 'OIDC login is not enabled')
-    identity.settings()
+    config = identity.settings()
+    if not config['client_id'] or not config['client_secret']:
+        raise HTTPException(404, 'Independent desktop OIDC client is not configured')
 
 
 def trusted_desktop_origin(request: Request):
@@ -136,6 +138,10 @@ async def begin_login(request: Request, desktop_id: str | None = None):
 
 @router.get('/login')
 async def login(request: Request):
+    if central.enabled():
+        from urllib.parse import quote
+        path = urlsplit(identity.settings()['public_url']).path or '/'
+        return RedirectResponse('/_r-auth/enter?fresh=1&next=' + quote(path, safe=''), 303)
     return await begin_login(request)
 
 

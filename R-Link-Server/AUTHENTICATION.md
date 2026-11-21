@@ -1,5 +1,11 @@
 # R-Link 多用户认证
 
+## 使用 R-Auth 的浏览器会话
+
+为 R-Link 分配独立 HTTPS 主机，向 R-Auth 登记 `r-link` 和该主机的 `/_r-auth/callback`。将生成的接入包安装在服务端，指定 `R_AUTH_PROJECT_CLIENT_ID=r-link` 和回环监听端口，运行 `node business.cjs`。反向代理将同一主机的 `/_r-auth/` 交给此进程，页面与 `/api/` 仍由 R-Link 提供。
+
+Python 后端设置 `R_LINK_AUTH_MODE=r-auth`、`R_LINK_PUBLIC_URL`、`OIDC_ISSUER`、`R_AUTH_ORIGIN`、本项目的 `R_AUTH_SESSION_KEY`，并将接入包目录加入 `PYTHONPATH`。Node 回调进程另需本项目的 `OIDC_CLIENT_SECRET`。新成员在 R-Link 等待角色审批，已绑定成员沿用其角色。浏览器、WebSocket 票据和已打开连接均复核中央会话。需要保留原生桌面登录的部署可继续配置原独立桌面交换客户端。
+
 R-Link 使用独立的 OIDC confidential client 直接向可信 Keycloak issuer 登录。
 R-Auth 作为账户中心可共用该 issuer 和同一用户主体，但 R-Auth Cookie、邮箱、userId 和第三方应用 token 都不是 R-Link 凭据。
 用户主键仅为精确的 `(issuer, subject)`，相同邮箱不会自动合并。设备和业务库目前共享，访问由角色限制。
